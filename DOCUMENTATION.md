@@ -354,23 +354,29 @@ Where `YourService` is the service name that is being registered with cordova.
 In the `src/electron` directory, add a file `index.js`\
 This file could look something like this:
 ```js
-module.exports = function execPlugin(action, args, callbackContext) {
-    if(action === 'yourAction') {
-        try
-        {
-            console.log(args[0]); // will echo 'foo'
-            console.log(args[1]); // will echo 123
-            callbackContext.success('yourAction completed successfully');
-        }
-        catch(e)
-        {
-            console.error('yourAction failed', e);
-            callbackContext.error({message: 'yourAction failed', cause:e });
-        }
-        return true;
-    }
-    return false;
+class MyPlugin {
+  action1(args, callbackContext) {
+    callbackContext.success("action1 successfully called");
+  }
 }
+
+const plugin = new MyPlugin();
+
+module.exports = function (action, args, callbackContext) {
+  if (!plugin[action])
+    return false;
+  try
+  {
+    plugin[action](args, callbackContext)
+  }
+  catch(e)
+  {
+    console.error(action + ' failed', e);
+    callbackContext.error({message: action + ' failed', cause:e });
+  }
+  return true;
+}
+
 ```
 Returning `true` from the function indicates that the action was found on the service, while returning `false` means the action was not found on the service.\
 The service can then be called via
@@ -386,21 +392,38 @@ To indicate an error in the execution and trigger the plugin caller's `error` ca
 If you want to return more than one plugin result, you need to keep the callback. This can be done by using `callbackContext.progress()`.\
 Here is an example of what this might look like:
 ```js
-module.exports = function(action, args, callbackContext) {
-  if(action === 'yourAction') {
-        let i = 0;
-        const interval = setInterval(() => {
-            if (i++ < 3) {
-                callbackContext.progress(i);
-                return;
-            }
-            clearInterval(interval)
-            callbackContext.success('Last result')
-            callbackContext.success('Already closed. This will not arrive')
-        }, 1000);
-    return true;
+
+class MyPlugin {
+  action1(args, callbackContext) {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i++ < 3) {
+        callbackContext.progress(i);
+        return;
+      }
+      clearInterval(interval)
+      callbackContext.success('Last result')
+      callbackContext.success('Already closed. This will not arrive')
+    }, 1000);
+
   }
-  return false;
+}
+
+const plugin = new MyPlugin();
+
+module.exports = function (action, args, callbackContext) {
+  if (!plugin[action])
+    return false;
+  try
+  {
+    plugin[action](args, callbackContext)
+  }
+  catch(e)
+  {
+    console.error(action + ' failed', e);
+    callbackContext.error({message: action + ' failed', cause:e });
+  }
+  return true;
 }
 ```
 In the example above, the `success` function will be called 4 times, with `0`, `1`, `2` and `'Last result'`.\
