@@ -355,8 +355,8 @@ In the `src/electron` directory, add a file `index.js`\
 This file could look something like this:
 ```js
 class MyPlugin {
-  action1(args, callbackContext) {
-    callbackContext.success("action1 successfully called");
+  yourAction(args, callbackContext) {
+    callbackContext.success("yourAction successfully called");
   }
 }
 
@@ -394,7 +394,7 @@ Here is an example of what this might look like:
 ```js
 
 class MyPlugin {
-  action1(args, callbackContext) {
+  yourAction(args, callbackContext) {
     let i = 0;
     const interval = setInterval(() => {
       if (i++ < 3) {
