@@ -1,8 +1,14 @@
 class PluginResult {
-    constructor (status, data) {
+    /**
+     *
+     * @param {number} status
+     * @param {any} [data]
+     * @param {boolean} [keepCallback]
+     */
+    constructor (status, data, keepCallback) {
         this.status = status;
         this.data = data !== undefined ? data : null;
-        this.keepCallback = false;
+        this.keepCallback = !!keepCallback;
     }
 
     setKeepCallback (value) {
@@ -27,6 +33,10 @@ class CallbackContext {
 
     sendPluginResult (result) {
         this.window.webContents.send(this.contextId, result);
+    }
+
+    progress (data) {
+        this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, true));
     }
 
     success (data) {

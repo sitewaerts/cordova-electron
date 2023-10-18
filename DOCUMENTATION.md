@@ -244,11 +244,11 @@ Set the `nodeIntegration` flag property to `true`.  By default, this property fl
 
 ```json
 {
-    "browserWindow": {
-        "webPreferences": {
-            "nodeIntegration": false
-        }
+"browserWindow": {
+    "webPreferences": {
+        "nodeIntegration": false
     }
+}
 }
 ```
 
@@ -269,11 +269,13 @@ To override the local HTML file, place your HTML file anywhere in the `{project_
 
  **Example**
 ```json
+{
   "browserWindowInstance": {
     "loadURL": {
       "url": "custom.html"
     }
   }
+}
 ```
 
 #### Load a local HTML using full path
@@ -282,11 +284,13 @@ To override the local HTML file using a full path, define the location of the lo
 
  **Example**
 ```json
+{
   "browserWindowInstance": {
     "loadURL": {
       "url": "file://{full_path}/index.html"
     }
   }
+}
 ```
 
 
@@ -297,17 +301,20 @@ To load a remote address, define the `url` in the Electron settings file.
 
  **Example**
 ```json
+{
   "browserWindowInstance": {
     "loadURL": {
       "url": "https://cordova.apache.org"
     }
   }
+}
 ```
 
 It is also possible to supply additional parameters using the [optional] `options` argument.
 
  **Example**
 ```json
+{
   "browserWindowInstance": {
     "loadURL": {
       "url": "https://cordova.apache.org",
@@ -315,6 +322,7 @@ It is also possible to supply additional parameters using the [optional] `option
         "extraHeaders": "Content-Type: text/html"
       }
     }
+  }
   }
 ```
 
@@ -334,9 +342,11 @@ In your plugin.xml, add the following elements:
 ### package.json
 In the repository's `package.json`, add the following:
 ```json
+{
   "cordova": {
     "serviceName": "YourService"
   }
+}
 ```
 Where `YourService` is the service name that is being registered with cordova.
 
@@ -344,17 +354,25 @@ Where `YourService` is the service name that is being registered with cordova.
 In the `src/electron` directory, add a file `index.js`\
 This file could look something like this:
 ```js
-module.exports = function(action, args, callbackContext) {
+module.exports = function execPlugin(action, args, callbackContext) {
     if(action === 'yourAction') {
-      console.log(args[0]); // will echo 'foo'
-      console.log(args[1]); // will echo 123
-      callbackContext.success('yourAction completed successfully');
-      return true;
+        try
+        {
+            console.log(args[0]); // will echo 'foo'
+            console.log(args[1]); // will echo 123
+            callbackContext.success('yourAction completed successfully');
+        }
+        catch(e)
+        {
+            console.error('yourAction failed', e);
+            callbackContext.error({message: 'yourAction failed', cause:e });
+        }
+        return true;
     }
     return false;
 }
 ```
-Returning `true` from the function indicates that the invocation has returned without problem, while returning `false` means the action was not found on the service.\
+Returning `true` from the function indicates that the action was found on the service, while returning `false` means the action was not found on the service.\
 The service can then be called via
 ```js
 const success = success => console.log(success)
@@ -362,21 +380,18 @@ const error = error => console.log(error)
 cordova.exec(success, error, 'YourService', 'yourAction', ['foo', 123]);
 ```
 ### Error handling
-To indicate an error in the execution and trigger the plugin caller's `error` callback, use `callbackContext.error`
+To indicate an error in the execution and trigger the plugin caller's `error` callback, use `callbackContext.error()`
 
 ### Multiple plugin results
-If you want to return more than one plugin result, you need to keep the callback, this can be done by using `callbackContext.sendPluginResult` and `pluginResult.setKeepCallback`.\
+If you want to return more than one plugin result, you need to keep the callback. This can be done by using `callbackContext.progress()`.\
 Here is an example of what this might look like:
 ```js
 module.exports = function(action, args, callbackContext) {
   if(action === 'yourAction') {
         let i = 0;
-        const PluginResult = callbackContext.PluginResult;
         const interval = setInterval(() => {
             if (i++ < 3) {
-                const result = new PluginResult(PluginResult.STATUS_OK, i);
-                result.setKeepCallback(true);
-                callbackContext.sendPluginResult(result);
+                callbackContext.progress(i);
                 return;
             }
             clearInterval(interval)

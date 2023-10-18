@@ -161,10 +161,9 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
 
     const plugin = require(cordova.services[serviceName]);
 
-    // API3 backwards compatible plugin call handling
-    const packageConfig = require(cordova.services[serviceName] + '/package.json');
-    if (packageConfig.cordova.API3 !== false) {
-        console.error('WARNING! Package ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to cordova-electron API 4.x ASAP. This API will be break in the next major version.');
+    // backwards compatible plugin call handling
+    if (typeof plugin !== 'function') {
+        console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
         try {
             await plugin[action](args);
         } catch (exception) {
