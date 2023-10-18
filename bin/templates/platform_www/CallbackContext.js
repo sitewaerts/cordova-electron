@@ -40,11 +40,11 @@ class CallbackContext {
     }
 
     success (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data));
+        this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
     }
 
     error (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, data));
+        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, data, false));
     }
 }
 
