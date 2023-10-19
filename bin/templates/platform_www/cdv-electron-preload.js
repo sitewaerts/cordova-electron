@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('_cdvElectronIpc', {
             }
         });
         try {
+            //console.log("ipcRenderer.invoke(" + serviceName + ", " + action + ", [" +  (args || []).join(", ") + "], " +  callbackId + ")");
             await ipcRenderer.invoke('cdv-plugin-exec', serviceName, action, args, callbackId);
         } catch (exception) {
             const message = "CHROME: Exception while invoking service action '" + serviceName + '.' + action + "'";
