@@ -30,6 +30,7 @@ const {
 // Electron settings from .json file.
 const cdvElectronSettings = require('./cdv-electron-settings.json');
 const reservedScheme = require('./cdv-reserved-scheme.json');
+const {PluginResult} = require("./CallbackContext");
 
 const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
     ? require('electron-devtools-installer')
@@ -155,7 +156,7 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
     // this condition should never be met, exec.js already tests for it.
     if (!(cordova && cordova.services && cordova.services[serviceName])) {
         const message = `NODE: Invalid Service. Service '${serviceName}' does not have an electron implementation.`;
-        callbackContext.error(new PluginResult(PluginResult.ERROR | PluginResult.ERROR_UNKNOWN_SERVICE, message));
+        callbackContext.error(message);
         return;
     }
 
@@ -165,13 +166,16 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
     if (typeof plugin !== 'function') {
         console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
         try {
-            await plugin[action](args);
+            console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
+            const result = await plugin[action](args);
+            console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') done', result);
+            callbackContext.success(result);
         } catch (exception) {
             const message = "NODE: Exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
             // print error to terminal
             console.error(message, exception);
             // trigger node side error callback
-            callbackContext.error(new PluginResult(PluginResult.ERROR | PluginResult.ERROR_INVOCATION_EXCEPTION_NODE, { message, exception }));
+            callbackContext.error({ message, exception });
         }
         return;
     }
@@ -183,17 +187,17 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
             // successful invocation
         } else if (result === false) {
             const message = `NODE: Invalid action. Service '${serviceName}' does not have an electron implementation for action '${action}'.`;
-            callbackContext.error(new PluginResult(PluginResult.ERROR | PluginResult.ERROR_UNKNOWN_ACTION, message));
+            callbackContext.error(message);
         } else {
             const message = 'NODE: Unexpected plugin exec result' + result;
-            callbackContext.error(new PluginResult(PluginResult.ERROR | PluginResult.ERROR_UNEXPECTED_RESULT, message));
+            callbackContext.error(message);
         }
     } catch (exception) {
         const message = "NODE: Exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
         // print error to terminal
         console.error(message, exception);
         // trigger node side error callback
-        callbackContext.error(new PluginResult(PluginResult.ERROR | PluginResult.ERROR_INVOCATION_EXCEPTION_NODE, { message, exception }));
+        callbackContext.error({ message, exception });
     }
 });
 // In this file you can include the rest of your app's specific main process
