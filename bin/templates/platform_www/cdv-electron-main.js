@@ -147,7 +147,7 @@ app.on('activate', () => {
     }
 });
 
-ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackId) => {
+ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => {
     // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string incapsulated in an Error. See https://github.com/electron/electron/issues/24427
 
     const { CallbackContext } = require('./CallbackContext.js');
@@ -186,18 +186,27 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
 
     // API 4.x handling
     try {
-        const result = await plugin(action, args, callbackContext);
-        if (result === true) {
-            // successful invocation
-        } else if (result === false) {
-            const message = `NODE: Invalid action. Service '${serviceName}' does not have an electron implementation for action '${action}'.`;
-            callbackContext.error(message);
-        } else {
-            const message = 'NODE: Unexpected plugin exec result' + result;
-            callbackContext.error(message);
-        }
+
+        Promise.resolve(plugin(action, args, callbackContext))
+            .then((result)=>{
+                if (result === true) {
+                    // successful invocation
+                } else if (result === false) {
+                    const message = `NODE: Invalid action. Service '${serviceName}' does not have an electron implementation for action '${action}'.`;
+                    callbackContext.error(message);
+                } else {
+                    const message = 'NODE: Unexpected plugin exec result' + result;
+                    callbackContext.error(message);
+                }
+            }, (exception)=>{
+                const message = "NODE: Exception (inner) while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
+                // print error to terminal
+                console.error(message, exception);
+                // trigger node side error callback
+                callbackContext.error({ message, exception });
+            })
     } catch (exception) {
-        const message = "NODE: Exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
+        const message = "NODE: Exception (outer) while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
         // print error to terminal
         console.error(message, exception);
         // trigger node side error callback
