@@ -17,6 +17,8 @@ class PluginResult {
 }
 PluginResult.STATUS_OK = 1;
 PluginResult.STATUS_ERROR = 2;
+
+// TODO: are these really needed?
 PluginResult.ERROR_UNKNOWN_SERVICE = 4;
 PluginResult.ERROR_UNKNOWN_ACTION = 8;
 PluginResult.ERROR_UNEXPECTED_RESULT = 16;

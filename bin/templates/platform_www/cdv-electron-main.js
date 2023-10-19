@@ -166,9 +166,9 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, args, callbackI
     if (typeof plugin !== 'function') {
         console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
         try {
-            console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
+            // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
             const result = await plugin[action](args);
-            console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') done', result);
+            // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') done', result);
             callbackContext.success(result);
         } catch (exception) {
             const message = "NODE: Exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
