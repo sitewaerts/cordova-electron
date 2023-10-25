@@ -30,7 +30,6 @@ const {
 // Electron settings from .json file.
 const cdvElectronSettings = require('./cdv-electron-settings.json');
 const reservedScheme = require('./cdv-reserved-scheme.json');
-const {PluginResult} = require("./CallbackContext");
 
 const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
     ? require('electron-devtools-installer')
@@ -75,6 +74,7 @@ function createWindow () {
     const browserWindowOpts = Object.assign({}, cdvElectronSettings.browserWindow, { icon: appIcon });
     browserWindowOpts.webPreferences.preload = path.join(app.getAppPath(), 'cdv-electron-preload.js');
     browserWindowOpts.webPreferences.contextIsolation = true;
+    browserWindowOpts.webPreferences.sandbox = false; // https://www.electronjs.org/docs/latest/tutorial/sandbox#disabling-the-sandbox-for-a-single-process
 
     mainWindow = new BrowserWindow(browserWindowOpts);
 
@@ -147,6 +147,14 @@ app.on('activate', () => {
     }
 });
 
+/**
+ *
+ * @type {Record<string, boolean>}
+ * @private
+ */
+const _API_WARNINGS = {};
+
+
 ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => {
     // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string incapsulated in an Error. See https://github.com/electron/electron/issues/24427
 
@@ -164,7 +172,11 @@ ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => 
 
     // backwards compatible plugin call handling
     if (typeof plugin !== 'function') {
-        console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
+        if(!_API_WARNINGS[serviceName])
+        {
+            _API_WARNINGS[serviceName] = true;
+            console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
+        }
         try {
             // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
             Promise.resolve(plugin[action](args)).then((result)=>{

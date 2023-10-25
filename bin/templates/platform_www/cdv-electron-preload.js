@@ -23,11 +23,28 @@ const { cordova } = require('./package.json');
 const { PluginResult } = require('./CallbackContext.js');
 
 contextBridge.exposeInMainWorld('_cdvElectronIpc', {
+    /**
+     *
+     * @param {(data:any)=>void} success
+     * @param {((error:any)=>void) | null} error
+     * @param {string} serviceName
+     * @param {string} action
+     * @param {ArrayLike<any> | null} args
+     * @param {string} callbackId
+     * @returns {Promise<void>}
+     */
     exec: async (success, error, serviceName, action, args, callbackId) => {
+
+        const _error = (e)=>{
+            console.error("CHROME: Exception while invoking service action '" + serviceName + '.' + action + "'", {args:args, cause: e});
+        }
+
+        error = error || _error;
+
         ipcRenderer.on(callbackId, (event, result) => {
             if (result.status === PluginResult.STATUS_OK) {
                 success(result.data);
-            } else if (result.status & PluginResult.STATUS_ERROR) {
+            } else if (result.status && PluginResult.STATUS_ERROR) {
                 error(result.data);
             } else {
                 error(new Error('Unexpected plugin result status code'));

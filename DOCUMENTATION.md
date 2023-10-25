@@ -394,7 +394,7 @@ Here is an example of what this might look like:
 ```js
 
 class MyPlugin {
-  yourAction(args, callbackContext) {
+  yourAction([arg1, arg2], callbackContext) {
     let i = 0;
     const interval = setInterval(() => {
       if (i++ < 3) {
