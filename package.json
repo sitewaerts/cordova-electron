@@ -12,6 +12,7 @@
     "ecosystem:cordova",
     "electron"
   ],
+  "types": "./types/index.d.ts",
   "scripts": {
     "lint": "eslint .",
     "prepare": "cordova-js build > bin/templates/platform_www/cordova.js",

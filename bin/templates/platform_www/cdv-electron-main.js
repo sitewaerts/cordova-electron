@@ -196,7 +196,7 @@ ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => 
         return;
     }
 
-    // API 4.x handling
+    // new plugin API handling
     try {
 
         Promise.resolve(plugin(action, args, callbackContext))

@@ -33,18 +33,30 @@ class CallbackContext {
         this.PluginResult = PluginResult;
     }
 
+    /**
+     * @param {any} result
+     */
     sendPluginResult (result) {
         this.window.webContents.send(this.contextId, result);
     }
 
+    /**
+     * @param {any} data
+     */
     progress (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, true));
     }
 
+    /**
+     * @param {any} [data]
+     */
     success (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
     }
 
+    /**
+     * @param {any} data
+     */
     error (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, data, false));
     }
