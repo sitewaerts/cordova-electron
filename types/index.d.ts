@@ -7,6 +7,7 @@
 // Licensed under the MIT license.
 
 interface CallbackContext {
+    getCordovaService (serviceName:string):any;
     progress (data:any):void;
     success (data?:any):void;
     error (data:any):void;

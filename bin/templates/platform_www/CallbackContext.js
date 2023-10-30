@@ -1,3 +1,89 @@
+
+const CENSOR = ()=>
+{
+    const values = [];
+
+    const maxDepth = 200;
+
+    return function (key, value)
+    {
+        if (key === undefined || key === null || key === "")
+        {
+            values.push(value);
+            return value;
+        }
+
+
+        if (value === undefined || value === null)
+            return value;
+
+        if (typeof(value) == "string")
+            return value;
+
+        if (typeof(value) == "number")
+            return value;
+
+        if (typeof(value) == "boolean")
+            return value;
+
+        if (typeof(value) == "function")
+            return undefined;
+
+        // nested object
+
+        const currentParent = this;
+
+        if (currentParent === value)
+        {
+            //console.log("--> Circular ref detected [" + key + "]");
+            return '[Circular ' + key + ": " + typeof(value) + ']';
+        }
+
+        // close open objects on stack
+        function closeStackUpToCurrent()
+        {
+//                console.log("closing stack " + values.length + " [" + key
+//                        + "]");
+
+            if (values.length <= 0)
+                return;
+
+            var stackLast = values[values.length - 1];
+            if (stackLast === currentParent)
+                return;
+            values.pop();
+            closeStackUpToCurrent();
+        }
+
+        closeStackUpToCurrent();
+
+        if (values.length >= maxDepth)
+        {
+            //console.log("--> MaxDepth reached [" + key + "]");
+            return '[MaxDepth ' + key + ": " + typeof(value) + ']';
+        }
+
+        // currentParent is now the top element on the stack
+
+        // if value is somewhere on the stack, we have a circular ref
+        const l = values.length;
+        for (let i = 0; i < l; i++)
+        {
+            if (values[i] === value)
+            {
+                //console.log("--> Circular ref detected [" + key + "]");
+                return '[Circular ' + typeof(value) + ']';
+            }
+        }
+
+        // open new nested object
+        values.push(value);
+        return value;
+
+    };
+};
+
+
 class PluginResult {
     /**
      *
@@ -26,17 +112,53 @@ PluginResult.ERROR_INVOCATION_EXCEPTION_NODE = 32;
 PluginResult.ERROR_INVOCATION_EXCEPTION_CHROME = 64;
 
 class CallbackContext {
-    constructor (contextId, window) {
+    /**
+     *
+     * @param {string} contextId
+     * @param window
+     * @param {Record<string, string>} cordovaServices
+     * @param {(id:string)=>any}require
+     */
+    constructor (contextId, window, cordovaServices, require) {
         this.contextId = contextId;
         this.window = window;
+        this._cordovaServices = cordovaServices;
+        this._require = require;
         // add PluginResult as instance variable to be able to access it in plugins
         this.PluginResult = PluginResult;
+    }
+
+    /**
+     *
+     * @param {string} serviceName
+     * @returns {any}
+     */
+    getCordovaService(serviceName){
+        const fullServiceName = this._cordovaServices[serviceName];
+        if (!fullServiceName) {
+            const message = `NODE: Invalid Service. Service '${serviceName}' does not have an electron implementation.`;
+            console.error(message);
+            throw new Error(message);
+        }
+
+        const service = this._require(this._cordovaServices[serviceName]);
+
+        if(!service )
+        {
+            const message = `NODE: Invalid Service. Electron implementation '${fullServiceName}' for service '${serviceName}' could not be loaded.`;
+            console.error(message);
+            throw new Error(message);
+        }
+
+        return service;
     }
 
     /**
      * @param {any} result
      */
     sendPluginResult (result) {
+        if(result)
+            result = JSON.parse(JSON.stringify(result, CENSOR()));
         this.window.webContents.send(this.contextId, result);
     }
 

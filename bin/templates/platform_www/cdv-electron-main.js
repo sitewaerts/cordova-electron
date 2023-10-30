@@ -159,7 +159,7 @@ ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => 
     // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string incapsulated in an Error. See https://github.com/electron/electron/issues/24427
 
     const { CallbackContext } = require('./CallbackContext.js');
-    const callbackContext = new CallbackContext(callbackId, mainWindow);
+    const callbackContext = new CallbackContext(callbackId, mainWindow, cordova.services, require);
 
     // this condition should never be met, exec.js already tests for it.
     if (!(cordova && cordova.services && cordova.services[serviceName])) {
