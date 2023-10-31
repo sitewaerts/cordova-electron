@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('_cdvElectronIpc', {
 
         error = error || _error;
 
+        success = success || function(){};
+
         ipcRenderer.on(callbackId, (event, result) => {
             if (result.status === PluginResult.STATUS_OK) {
                 success(result.data);
