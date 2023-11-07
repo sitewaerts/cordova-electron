@@ -259,7 +259,7 @@ describe('Handler export', () => {
                 // Validate that sample plugin's service is registered.
                 const validateAppPackage = JSON.parse(fs.readFileSync(frameworkInstallProjectAppPackageFile, 'utf8'));
                 const test = validateAppPackage && validateAppPackage.cordova && validateAppPackage.cordova.services && validateAppPackage.cordova.services.Sample;
-                expect(test).toBe(frameworkInstallElectronPluginId);
+                expect(test?.electronModule).toBe(frameworkInstallElectronPluginId);
             });
 
             it('should not update the electron app package when there are no registered service', async () => {
@@ -303,7 +303,7 @@ describe('Handler export', () => {
                 // Validate that sample plugin's service is registered.
                 const validateAppPackage = JSON.parse(fs.readFileSync(frameworkInstallProjectAppPackageFile, 'utf8'));
                 const test = validateAppPackage && validateAppPackage.cordova && validateAppPackage.cordova.services && validateAppPackage.cordova.services.Sample;
-                expect(test).not.toBe(frameworkInstallElectronPluginId);
+                expect(test?.electronModule).not.toBe(frameworkInstallElectronPluginId);
             });
 
             it('should warn when there are conflicting service name between more then one plugin', async () => {
@@ -325,7 +325,10 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: 'cordova-plugin-sample-electron'
+                    Sample: {
+                        electronModule: 'cordova-plugin-sample-electron',
+                        pluginId: 'cordova-plugin-sample'
+                    }
                 };
 
                 fs.writeFileSync(
@@ -367,7 +370,10 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: 'cordova-plugin-sample-electron'
+                    Sample: {
+                        electronModule: 'cordova-plugin-sample-electron',
+                        pluginId: 'cordova-plugin-sample'
+                    }
                 };
 
                 fs.writeFileSync(
@@ -406,7 +412,10 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: 'some-other-package'
+                    Sample: {
+                        electronModule: 'some-other-package-electron',
+                        pluginId: 'some-other-package'
+                    }
                 };
 
                 fs.writeFileSync(

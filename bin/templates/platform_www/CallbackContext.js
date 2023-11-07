@@ -116,41 +116,12 @@ class CallbackContext {
      *
      * @param {string} contextId
      * @param window
-     * @param {Record<string, string>} cordovaServices
-     * @param {(id:string)=>any}require
      */
-    constructor (contextId, window, cordovaServices, require) {
+    constructor (contextId, window) {
         this.contextId = contextId;
         this.window = window;
-        this._cordovaServices = cordovaServices;
-        this._require = require;
         // add PluginResult as instance variable to be able to access it in plugins
         this.PluginResult = PluginResult;
-    }
-
-    /**
-     *
-     * @param {string} serviceName
-     * @returns {any}
-     */
-    getCordovaService(serviceName){
-        const fullServiceName = this._cordovaServices[serviceName];
-        if (!fullServiceName) {
-            const message = `NODE: Invalid Service. Service '${serviceName}' does not have an electron implementation.`;
-            console.error(message);
-            throw new Error(message);
-        }
-
-        const service = this._require(this._cordovaServices[serviceName]);
-
-        if(!service )
-        {
-            const message = `NODE: Invalid Service. Electron implementation '${fullServiceName}' for service '${serviceName}' could not be loaded.`;
-            console.error(message);
-            throw new Error(message);
-        }
-
-        return service;
     }
 
     /**
