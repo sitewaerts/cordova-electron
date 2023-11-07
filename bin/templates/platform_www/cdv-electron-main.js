@@ -175,7 +175,7 @@ ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => 
         if(!_API_WARNINGS[serviceName])
         {
             _API_WARNINGS[serviceName] = true;
-            console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
+            console.warn('WARNING! Plugin ' + cordova.services[serviceName] + ' is using a deprecated API lacking support for progress callbacks. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
         }
         try {
             // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
