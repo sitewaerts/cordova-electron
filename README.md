@@ -62,7 +62,7 @@ $ ./cordova/run
 
 ## Documentation
 
-For more documentation, please refer to the [DOCUMENTATION.md](https://github.com/apache/cordova-electron/blob/master/DOCUMENTATION.md) file.
+For more documentation, please refer to the [DOCUMENTATION.md](./DOCUMENTATION.md) file.
 
 ## Contributions
 
