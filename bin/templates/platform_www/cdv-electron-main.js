@@ -32,6 +32,9 @@ const {
 const cdvElectronSettings = require('./cdv-electron-settings.json');
 const reservedScheme = require('./cdv-reserved-scheme.json');
 
+const {CallbackContext} = require('./CallbackContext.js');
+
+
 const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
     ? require('electron-devtools-installer')
     : false;
@@ -137,8 +140,8 @@ app.on('ready', () =>
     {
         const extensions = cdvElectronSettings.devToolsExtension.map(id => devTools[id] || id);
         devTools.default(extensions) // default = install extension
-            .then((name) => console.log(`Added Extension:  ${name}`))
-            .catch((err) => console.log('An error occurred: ', err));
+            .then((name) => console.log(`Added Extension '${name}'`))
+            .catch((err) => console.error(`An error occurred while adding Extension '${name}'`, err));
     }
 
     createWindow();
@@ -170,160 +173,190 @@ app.on('activate', () =>
     }
 });
 
-/**
- * @type {Record<string, boolean>}
- * @private
- */
-const _SERVICE_API_WARNINGS = {};
-
-/**
- * @type {Record<string, boolean>}
- * @private
- */
-const _SERVICE_INITIALIZED = {};
-
-/**
- *
- * @param {string} serviceName
- * @return {Record<string, string>}
- */
-function getVariables(serviceName)
+class Service
 {
-    const serviceInfo = cordova.services[serviceName];
-    if (!serviceInfo)
+    /**
+     *
+     * @param {string} serviceName
+     */
+    constructor(serviceName)
     {
-        const message = `NODE: Invalid Service. Service '${serviceName}' does not have an electron implementation.`;
-        console.error(message);
-        throw new Error(message);
+        this.serviceName = serviceName;
+
+        const serviceInfo = cordova && cordova.services && cordova.services[serviceName];
+        // this condition should never be met, exec.js already tests for it.
+        if (!serviceInfo)
+        {
+            console.error(`Invalid Service. Service '${this.serviceName}' does not have an electron implementation.`);
+            this._exec = (action, args, callbackContext)=>{
+                const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' isn't available.`;
+                console.error(message);
+                callbackContext.error(message)
+            };
+            return
+        }
+        this.module = serviceInfo.electronModule;
+        this.pluginId = serviceInfo.pluginId;
+
+        const module = require(this.module);
+
+        if (typeof module !== 'function')
+        {
+            console.warn('WARNING! Plugin ' + this.module + ' is using a deprecated API which is lacking support for progress callbacks. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future releases.');
+
+            const _impl = module;
+            this._impl = Promise.resolve(_impl);
+
+            this._exec = (action, args, callbackContext) =>
+            {
+                // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') ...');
+
+                const _implAction = _impl[action];
+                if(!_implAction)
+                {
+                    const message = `Invalid action. Service '${this.module}' does not have an electron implementation for action '${action}'.`;
+                    callbackContext.error(message);
+                    return;
+                }
+
+                Promise.resolve(_implAction(args)).then((result) =>
+                {
+                    // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') done', result);
+                    callbackContext.success(result);
+                }, (error) =>
+                {
+                    // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') failed', error);
+                    callbackContext.error(error);
+                });
+            }
+        }
+        else
+        {
+
+            /**
+             * @type {Promise<any>}
+             * @private
+             */
+            const _impl = this._impl = (async () =>
+            {
+                if (module.init)
+                    try
+                    {
+                        const variables = installed_plugins[this.pluginId] || {};
+                        await module.init(variables, serviceLoader);
+                    } catch (error)
+                    {
+                        console.error("cannot init module " + this.module + " for service " + serviceName, error);
+                        this._exec = (action, args, callbackContext)=>{
+                            const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' wasn't successfully initialized.`;
+                            console.error(message);
+                            callbackContext.error(message)
+                        };
+                        return null;
+                    }
+                return module;
+            })();
+
+            this._exec = (action, args, callbackContext) =>
+            {
+                _impl
+                    .then((impl) =>
+                    {
+                        return impl(action, args, callbackContext)
+                    })
+                    .then((result) =>
+                    {
+                        if (result === true)
+                        {
+                            // action found and invoked. success/error handling via callbackContext performed inside the action impl
+                        }
+                        else if (result === false)
+                        {
+                            const message = `Invalid action. Service '${this.module}' does not have an electron implementation for action '${action}'.`;
+                            callbackContext.error(message);
+                        }
+                        else
+                        {
+                            const message = 'Unexpected plugin exec result' + result;
+                            console.error(message, result);
+                            callbackContext.error(message);
+                        }
+                    })
+                    .catch((exception) =>
+                    {
+                        const message = "Unexpected exception while invoking service action '" + this.module + '.' + action + "'\r\n" + exception;
+                        console.error(message, exception);
+                        callbackContext.error({message, exception});
+                    })
+            }
+
+        }
+
+
     }
-    return installed_plugins[serviceInfo.pluginId] || {};
+
+    /**
+     * @return {Promise<any>}
+     */
+    getImpl()
+    {
+        return this._impl;
+    }
+
+    /**
+     *
+     * @param {string} action
+     * @param {Array<any>} args
+     * @param {CallbackContext} callbackContext
+     * @void
+     */
+    exec(action, args, callbackContext)
+    {
+        this._exec(action, args, callbackContext)
+    }
+
 }
 
 /**
- * @param {string} serviceName
- * @returns {Promise<{module:string, service:any}>}
+ * @type {Record<string, Service>}
+ * @private
  */
-async function getService(serviceName)
+const _SERVICES = {};
+
+/**
+ * @param {string} serviceName
+ * @returns {Service}
+ */
+function getService(serviceName)
 {
-    const serviceInfo = cordova && cordova.services && cordova.services[serviceName];
-    // this condition should never be met, exec.js already tests for it.
-    if (!serviceInfo)
-        throw new Error(`NODE: Invalid Service. Service '${serviceName}' does not have an electron implementation.`);
-
-    /**
-     * @type {string}
-     */
-    const electronModule = serviceInfo.electronModule;
-
-    const plugin = require(electronModule);
-
-    if (!_SERVICE_INITIALIZED[electronModule])
-    {
-        _SERVICE_INITIALIZED[electronModule] = true;
-        if (plugin.init)
-            await plugin.init(getVariables(serviceName), serviceLoader);
-    }
-    return {module:electronModule, service:plugin};
+    return _SERVICES[serviceName] = _SERVICES[serviceName] || new Service(serviceName);
 }
 
 /**
  * @param {string} serviceName
  * @returns {Promise<any>}
  */
-async function serviceLoader(serviceName){
-    const s = await getService(serviceName);
-    return s && s.service;
+function serviceLoader(serviceName)
+{
+    const s = getService(serviceName);
+    return s ? s.getImpl() : Promise.resolve(null);
 }
 
 
 ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) =>
 {
-    // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string incapsulated in an Error. See https://github.com/electron/electron/issues/24427
+    // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string encapsulated in an Error. See https://github.com/electron/electron/issues/24427
 
-    const {CallbackContext} = require('./CallbackContext.js');
     const callbackContext = new CallbackContext(callbackId, mainWindow);
 
-    getService(serviceName).then(
-        (service) =>
-        {
-            const module = service.module;
-            const plugin = service.service;
-            // backwards compatible plugin call handling
-            if (typeof plugin !== 'function')
-            {
-                if (!_SERVICE_API_WARNINGS[serviceName])
-                {
-                    _SERVICE_API_WARNINGS[serviceName] = true;
-                    console.warn('WARNING! Plugin ' + module + ' is using a deprecated API lacking support for progress callbacks. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future versions.');
-                }
-                try
-                {
-                    // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') ...');
-
-                    Promise.resolve(plugin[action](args)).then((result) =>
-                    {
-                        // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') done', result);
-                        callbackContext.success(result);
-                    }, (error) =>
-                    {
-                        // console.log(cordova.services[serviceName] + '.' + action + '(' + (args || []).join(',') + ') failed', error);
-                        callbackContext.error(error);
-                    });
-                } catch (exception)
-                {
-                    const message = "NODE: Exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + exception;
-                    // print error to terminal
-                    console.error(message, exception);
-                    // trigger node side error callback
-                    callbackContext.error({message, exception});
-                }
-                return;
-            }
-
-            // new plugin API handling
-            try
-            {
-
-                Promise.resolve(plugin(action, args, callbackContext))
-                    .then((result) =>
-                    {
-                        if (result === true)
-                        {
-                            // successful invocation
-                        }
-                        else if (result === false)
-                        {
-                            const message = `NODE: Invalid action. Service '${module}' does not have an electron implementation for action '${action}'.`;
-                            callbackContext.error(message);
-                        }
-                        else
-                        {
-                            const message = 'NODE: Unexpected plugin exec result' + result;
-                            callbackContext.error(message);
-                        }
-                    }, (exception) =>
-                    {
-                        const message = "NODE: Exception (inner) while invoking service action '" + module + '.' + action + "'\r\n" + exception;
-                        // print error to terminal
-                        console.error(message, exception);
-                        // trigger node side error callback
-                        callbackContext.error({message, exception});
-                    })
-
-            } catch (exception)
-            {
-                const message = "NODE: Exception (outer) while invoking service action '" + module + '.' + action + "'\r\n" + exception;
-                // print error to terminal
-                console.error(message, exception);
-                // trigger node side error callback
-                callbackContext.error({message, exception});
-            }
-        },
-        (error) =>
-        {
-            callbackContext.error(error);
-        }
-    );
-
+    try
+    {
+        getService(serviceName).exec(action, args, callbackContext);
+    } catch (error)
+    {
+        const message = "Unexpected exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + error;
+        console.error(message, error);
+        callbackContext.error({message, error});
+    }
 
 });
