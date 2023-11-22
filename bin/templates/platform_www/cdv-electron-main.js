@@ -491,7 +491,8 @@ const customSchemes = [
             supportFetchAPI: true,
             allowServiceWorkers: true,
             corsEnabled: true,
-            bypassCSP: true
+            bypassCSP: true,
+            stream: true
         }
     }
 ];
