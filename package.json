@@ -15,7 +15,7 @@
   "types": "./types/index.d.ts",
   "scripts": {
     "lint": "eslint .",
-    "prepare": "cordova-js build > bin/templates/platform_www/cordova.js",
+    "prepublishOnly": "cordova-js build > bin/templates/platform_www/cordova.js",
     "test": "npm run lint && npm run test:coverage",
     "test:coverage": "nyc npm run test:unit",
     "test:unit": "jasmine --config=tests/spec/unit.json"

@@ -1,4 +1,8 @@
-
+/**
+ * avoid exceptions when serializing objects with circular dependencies
+ * @return {(key:string|null,value:any)=> any}
+ * @constructor
+ */
 const CENSOR = ()=>
 {
     const values = [];
@@ -111,7 +115,8 @@ PluginResult.ERROR_UNEXPECTED_RESULT = 16;
 PluginResult.ERROR_INVOCATION_EXCEPTION_NODE = 32;
 PluginResult.ERROR_INVOCATION_EXCEPTION_CHROME = 64;
 
-class CallbackContext {
+class CordovaElectronCallbackContext
+{
     /**
      *
      * @param {string} contextId
@@ -155,4 +160,4 @@ class CallbackContext {
     }
 }
 
-module.exports = { CallbackContext, PluginResult };
+module.exports = { CordovaElectronCallbackContext: CordovaElectronCallbackContext, PluginResult };

@@ -20,7 +20,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const { cordova } = require('./package.json');
 
-const { PluginResult } = require('./CallbackContext.js');
+const { PluginResult } = require('./CordovaElectronCallbackContext.js');
 
 contextBridge.exposeInMainWorld('_cdvElectronIpc', {
     /**
