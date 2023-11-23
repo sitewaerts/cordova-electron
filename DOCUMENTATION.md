@@ -481,7 +481,7 @@ For example:
 cordova run electron --nobuild --debug -- --inspect-brk=5858
 ```
 
-## Enable Developer Tool Exrtensions (Chrome Extensions)
+## Enable Developer Tool Extensions (Chrome Extensions)
 
 To enable a devtool extension, for a debug build, add the `devToolsExtension` collection to the Cordova Electron Settings file (`ElectronSettingsFilePath`).
 
@@ -695,6 +695,11 @@ The example below enables multi-platform build for all OS and uses the default b
 }
 ```
 
+All accepted properties are documented at 
+- https://www.electron.build/configuration/win
+- https://www.electron.build/configuration/mac
+- https://www.electron.build/configuration/linux
+
 ## Signing Configurations
 
 ### macOS Signing
@@ -730,6 +735,8 @@ There are three types of signing targets. (`debug`, `release`, and `store`). Eac
     }
 }
 ```
+
+All accepted properties are documented at https://www.electron.build/configuration/mac
 
 For macOS signing, there are a few exceptions to how the signing information is used.
 By default, all packages with the exception of `mas` and `mas-dev`, use the `debug` and `release` signing configurations.
@@ -789,6 +796,8 @@ The signing information is comprised of two types. (`debug`, `release`). Each se
     }
 }
 ```
+
+All accepted properties are documented at https://www.electron.build/configuration/win 
 
 ### Linux Signing
 
