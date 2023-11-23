@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const {cordova} = require('./package.json');
-const {installed_plugins} = require('../electron.json');
+const {installed_plugins} = require('./electron.json');
 const {
     app,
     net,
