@@ -803,6 +803,21 @@ All accepted properties are documented at https://www.electron.build/configurati
 
 There are not signing requirements for Linux builds.
 
+
+## Debugging
+
+To debug a packaged app start it with additional Arguments.
+
+Example for Windows: `test-app.exe --inspect-brk --remote-debugging-port=8315`
+
+Specify `--inspect-brk | --inspect` to debug the main process.
+
+Specify `--remote-debugging-port=8315` to debug the renderer process.
+
+### Windows
+When packaged apps exe is started via cmd shell, it prints stdio to console. This is causing the console to hang after all windows have been closed. 
+To avoid this, specify `set ELECTRON_NO_ATTACH_CONSOLE=1`. Stdio isn't printed to console anymore, but the console won't hang.
+
 ## Plugins
 
 All browser-based plugins are usable with the Electron platform.
