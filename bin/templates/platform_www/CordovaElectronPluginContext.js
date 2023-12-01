@@ -43,12 +43,24 @@ class CordovaElectronPluginConfigContext extends CordovaElectronPluginContext{
      * @param {Record<string, string> | null} variables
      * @param {string} scheme
      * @param {string} hostname
+     * @param {electron.App} app
      * @param {Record<string, electron.CustomScheme>} schemes
+     * @param {Array<string>} defaultProtocols
      */
-    constructor (variables, scheme, hostname, schemes) {
+    constructor (variables, scheme, hostname, app, schemes, defaultProtocols) {
         super(variables, scheme, hostname);
+        this._app = app
         this.schemes = schemes
+        this.defaultProtocols = defaultProtocols
     }
+
+    /**
+     * @return {Electron.App}
+     */
+    getApp(){
+        return this._app;
+    }
+
 
     /**
      * @param {electron.CustomScheme} customScheme
@@ -61,6 +73,16 @@ class CordovaElectronPluginConfigContext extends CordovaElectronPluginContext{
         this.schemes[customScheme.scheme] = customScheme;
     }
 
+    /**
+     *
+     * @param {string} scheme
+     * @void
+     */
+    registerAsDefaultProtocolClient(scheme){
+        if(this.defaultProtocols.indexOf(scheme)<0)
+            this.defaultProtocols.push(scheme);
+    }
+
 
 }
 class CordovaElectronPluginInitContext extends CordovaElectronPluginContext{
@@ -71,11 +93,13 @@ class CordovaElectronPluginInitContext extends CordovaElectronPluginContext{
      * @param {string} hostname
      * @param {(serviceName:string)=>Promise<any>} serviceLoader
      * @param {electron.BrowserWindow} mainWindow
+     * @param {electron.App} app
      */
-    constructor (variables, scheme, hostname, serviceLoader, mainWindow) {
+    constructor (variables, scheme, hostname, serviceLoader, mainWindow, app) {
         super(variables, scheme, hostname);
         this._serviceLoader = serviceLoader;
         this._mainWindow = mainWindow
+        this._app = app
     }
 
     /**
@@ -84,6 +108,13 @@ class CordovaElectronPluginInitContext extends CordovaElectronPluginContext{
      */
     getService(serviceName){
         return this._serviceLoader(serviceName);
+    }
+
+    /**
+     * @return {Electron.App}
+     */
+    getApp(){
+        return this._app;
     }
 
     /**

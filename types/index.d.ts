@@ -56,6 +56,11 @@ interface CordovaElectronPluginContext {
 
 interface CordovaElectronPluginConfigContext extends CordovaElectronPluginContext {
 
+    /**
+     * access to the app
+     */
+    getApp():Electron.App
+
     registerSchemeAsPrivileged(customScheme: electron.CustomScheme): void
 
 }
@@ -66,6 +71,11 @@ interface CordovaElectronPluginInitContext extends CordovaElectronPluginContext 
      * lookup a plugin instance
      */
     getService(serviceName: string): Promise<any>
+
+    /**
+     * access to the app
+     */
+    getApp():Electron.App
 
     /**
      * access to the apps main window
