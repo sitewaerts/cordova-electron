@@ -131,6 +131,7 @@ class CordovaElectronCallbackContext
 
     /**
      * @param {any} result
+     * @void
      */
     sendPluginResult (result) {
         if(result)
@@ -140,6 +141,7 @@ class CordovaElectronCallbackContext
 
     /**
      * @param {any} data
+     * @void
      */
     progress (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, true));
@@ -147,6 +149,7 @@ class CordovaElectronCallbackContext
 
     /**
      * @param {any} [data]
+     * @void
      */
     success (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
@@ -154,6 +157,7 @@ class CordovaElectronCallbackContext
 
     /**
      * @param {any} data
+     * @void
      */
     error (data) {
         this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, data, false));
