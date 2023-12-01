@@ -234,6 +234,7 @@ try
                         installed_plugins[this.pluginId],
                         scheme,
                         hostname,
+                        app,
                         result.schemes,
                         result.defaultProtocols
                     ))
