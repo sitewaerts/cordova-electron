@@ -429,9 +429,9 @@ try
 
     function configureProtocol()
     {
-        // use protocol instance for window. it may differ from default/global protocol if window uses a dedicated session and/or partition
+        // ??? use protocol instance for window. it may differ from default/global protocol if window uses a dedicated session and/or partition
         // see https://www.electronjs.org/docs/latest/api/protocol#using-protocol-with-a-custom-partition-or-session
-        const protocol = mainWindow.webContents.session.protocol;
+        //const protocol = mainWindow.webContents.session.protocol;
 
         // restrict file scheme handler to app path
         if (!protocol.isProtocolIntercepted('file'))
