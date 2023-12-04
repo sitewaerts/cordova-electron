@@ -446,7 +446,9 @@ try
             {
                 protocol.interceptFileProtocol('file', (request, cb) =>
                 {
-                    const osPath = path.normalize(url.fileURLToPath(request.url));
+                    // remove query and hash
+                    const url = (request.url.split('?')[0]).split('#')[0];
+                    const osPath = path.normalize(url.fileURLToPath(url));
                     if (!osPath.startsWith(__dirname))
                         cb({statusCode: 404}); // leaving the sandbox is forbidden
                     else
@@ -464,9 +466,12 @@ try
             {
                 protocol.handle(scheme, (request) =>
                 {
-                    if (!request.url.startsWith(basePath))
+                    // remove query and hash
+                    const url = (request.url.split('?')[0]).split('#')[0];
+
+                    if (!url.startsWith(basePath))
                         return new Response(null, {status: 404}); // leaving the sandbox is forbidden
-                    const osPath = path.normalize(path.join(__dirname, request.url.slice(basePath.length)));
+                    const osPath = path.normalize(path.join(__dirname, url.slice(basePath.length)));
                     if (!osPath.startsWith(__dirname))
                         return new Response(null, {status: 404}); // leaving the sandbox is forbidden
 
