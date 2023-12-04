@@ -467,11 +467,11 @@ try
                 protocol.handle(scheme, (request) =>
                 {
                     // remove query and hash
-                    const url = (request.url.split('?')[0]).split('#')[0];
+                    const u = (request.url.split('?')[0]).split('#')[0];
 
                     if (!url.startsWith(basePath))
                         return new Response(null, {status: 404}); // leaving the sandbox is forbidden
-                    const osPath = path.normalize(path.join(__dirname, url.slice(basePath.length)));
+                    const osPath = path.normalize(path.join(__dirname, u.slice(basePath.length)));
                     if (!osPath.startsWith(__dirname))
                         return new Response(null, {status: 404}); // leaving the sandbox is forbidden
 
