@@ -22,6 +22,7 @@ const {
     net,
     BrowserWindow,
     protocol,
+    session,
     ipcMain,
     dialog
 } = require('electron');
@@ -75,6 +76,12 @@ try
      * @type {electron.BrowserWindow}
      */
     let mainWindow;
+
+    /**
+     *
+     * @type {Array<string>}
+     */
+    let allSchemesPartitions = [];
 
     class Service
     {
@@ -158,7 +165,8 @@ try
                                 hostname,
                                 Service.serviceLoader,
                                 mainWindow,
-                                app
+                                app,
+                                allSchemesPartitions
                             ));
                             this._initialized = true;
                         } catch (error)
@@ -236,7 +244,8 @@ try
                         hostname,
                         app,
                         result.schemes,
-                        result.defaultProtocols
+                        result.defaultProtocols,
+                        result.allSchemesPartitions
                     ))
             } catch (e)
             {
@@ -383,6 +392,7 @@ try
      * @typedef {Object} ConfigureResult
      * @property {Record<string, electron.CustomScheme>} schemes
      * @property {Array<string>} defaultProtocols
+     * @property {Array<string>} allSchemesPartitions
      */
 
     /**
@@ -395,7 +405,7 @@ try
         /**
          * @type {ConfigureResult}
          */
-        const result = {schemes: {}, defaultProtocols: []};
+        const result = {schemes: {}, defaultProtocols: [], allSchemesPartitions: allSchemesPartitions};
         if (cordova?.services)
         {
             for (const serviceName in cordova.services)
@@ -429,49 +439,58 @@ try
 
     function configureProtocol()
     {
+        function configure(protocol)
+        {
+            // restrict file scheme handler to app path
+            if (!protocol.isProtocolIntercepted('file'))
+            {
+                protocol.interceptFileProtocol('file', (request, cb) =>
+                {
+                    const osPath = path.normalize(url.fileURLToPath(request.url));
+                    if (!osPath.startsWith(__dirname))
+                        cb({statusCode: 404}); // leaving the sandbox is forbidden
+                    else
+                        cb(osPath)
+                    return true;
+                });
+            }
+
+            if (isFileProtocol)
+                return;
+
+            // register custom protocol handler, if not already registered by cordova-plugin-file (or others)
+            // obviously there is a bug in electron: protocol.handle cannot overwrite already registered protocol even if protocol.unhandle is called
+            if (!protocol.isProtocolHandled(scheme))
+            {
+                protocol.handle(scheme, (request) =>
+                {
+                    if (!request.url.startsWith(basePath))
+                        return new Response(null, {status: 404}); // leaving the sandbox is forbidden
+                    const osPath = path.normalize(path.join(__dirname, request.url.slice(basePath.length)));
+                    if (!osPath.startsWith(__dirname))
+                        return new Response(null, {status: 404}); // leaving the sandbox is forbidden
+
+                    // this requires the file protocol to be available.
+                    return net.fetch(url.pathToFileURL(osPath).toString());
+                    // .then((response) =>
+                    // {
+                    //     // could apply defs from config.xml here: e.g. <access origin="cdvfile://*" /> ....
+                    //     // response.headers.set('Access-Control-Allow-Origin', '*')
+                    //     return response;
+                    // })
+                });
+            }
+        }
+
         // ??? use protocol instance for window. it may differ from default/global protocol if window uses a dedicated session and/or partition
         // see https://www.electronjs.org/docs/latest/api/protocol#using-protocol-with-a-custom-partition-or-session
-        //const protocol = mainWindow.webContents.session.protocol;
-
-        // restrict file scheme handler to app path
-        if (!protocol.isProtocolIntercepted('file'))
-        {
-            protocol.interceptFileProtocol('file', (request, cb) =>
-            {
-                const osPath = path.normalize(url.fileURLToPath(request.url));
-                if (!osPath.startsWith(__dirname))
-                    cb({statusCode: 404}); // leaving the sandbox is forbidden
-                else
-                    cb(osPath)
-                return true;
-            });
+        //configure(mainWindow.webContents.session.protocol);
+        configure(protocol);
+        for(const partition of configResult.allSchemesPartitions){
+            const p = session.fromPartition(partition).protocol;
+            configure(p);
         }
 
-        if (isFileProtocol)
-            return;
-
-        // register custom protocol handler, if not already registered by cordova-plugin-file (or others)
-        // obviously there is a bug in electron: protocol.handle cannot overwrite already registered protocol even if protocol.unhandle is called
-        if (!protocol.isProtocolHandled(scheme))
-        {
-            protocol.handle(scheme, (request) =>
-            {
-                if (!request.url.startsWith(basePath))
-                    return new Response(null, {status: 404}); // leaving the sandbox is forbidden
-                const osPath = path.normalize(path.join(__dirname, request.url.slice(basePath.length)));
-                if (!osPath.startsWith(__dirname))
-                    return new Response(null, {status: 404}); // leaving the sandbox is forbidden
-
-                // this requires the file protocol to be available.
-                return net.fetch(url.pathToFileURL(osPath).toString());
-                // .then((response) =>
-                // {
-                //     // could apply defs from config.xml here: e.g. <access origin="cdvfile://*" /> ....
-                //     // response.headers.set('Access-Control-Allow-Origin', '*')
-                //     return response;
-                // })
-            });
-        }
     }
 
     function startApp()
@@ -524,7 +543,12 @@ try
         customSchemes.push(configResult.schemes[scheme]);
     }
 
+    // register at default session.protocol
     protocol.registerSchemesAsPrivileged(customSchemes);
+    // for(const partition of configResult.allSchemesPartitions){
+    //     const p = session.fromPartition(partition).protocol;
+    //     p.registerSchemesAsPrivileged(customSchemes);
+    // }
 
     for(let protocol of configResult.defaultProtocols)
     {

@@ -63,6 +63,8 @@ interface CordovaElectronPluginConfigContext extends CordovaElectronPluginContex
 
     registerSchemeAsPrivileged(customScheme: electron.CustomScheme): void
 
+    enableAllSchemesOnPartition(partition: string): void
+
 }
 
 interface CordovaElectronPluginInitContext extends CordovaElectronPluginContext {
@@ -81,6 +83,8 @@ interface CordovaElectronPluginInitContext extends CordovaElectronPluginContext 
      * access to the apps main window
      */
     getMainWindow(): Electron.BrowserWindow
+
+    getAllSchemesPartitions():Array<string>
 
 }
 
