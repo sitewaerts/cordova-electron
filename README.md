@@ -51,7 +51,7 @@ $ cordova run electron
 
     `npm install`
 
-5. Create new project with standalone binaraies.
+5. Create new project with standalone binaries.
 
 ```
 $ ./bin/create helloworld
