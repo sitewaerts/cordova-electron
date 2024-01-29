@@ -45,7 +45,7 @@ Electron is a framework that uses web technologies (HTML, CSS, and JS) to build 
     - [Cordova Package Handling](#cordova-package-handling)
   - [DevTools](#devtools)
   - [Debugging the Application's Main Process](#debugging-the-applications-main-process)
-  - [Enable Developer Tool Exrtensions (Chrome Extensions)](#enable-developer-tool-exrtensions-chrome-extensions)
+  - [Enable Developer Tool Extensions (Chrome Extensions)](#enable-developer-tool-extensions-chrome-extensions)
   - [Build Configurations](#build-configurations)
     - [Default Build Configurations](#default-build-configurations)
     - [Customizing Build Configurations](#customizing-build-configurations)

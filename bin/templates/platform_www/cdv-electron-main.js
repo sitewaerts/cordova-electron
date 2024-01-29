@@ -487,7 +487,7 @@ try
             }
         }
 
-        // ??? use protocol instance for window. it may differ from default/global protocol if window uses a dedicated session and/or partition
+        // ??? use protocol instance from window. it may differ from default/global protocol if window uses a dedicated session and/or partition
         // see https://www.electronjs.org/docs/latest/api/protocol#using-protocol-with-a-custom-partition-or-session
         //configure(mainWindow.webContents.session.protocol);
         configure(protocol);
