@@ -21,6 +21,7 @@ const {
     app,
     net,
     BrowserWindow,
+    Menu,
     protocol,
     session,
     ipcMain,
@@ -349,6 +350,8 @@ try
         browserWindowOpts.webPreferences.sandbox = false; // https://www.electronjs.org/docs/latest/tutorial/sandbox#disabling-the-sandbox-for-a-single-process
 
         mainWindow = new BrowserWindow(browserWindowOpts);
+
+        Menu.setApplicationMenu(null);
 
         if(cdvElectronSettings['overrideUserAgent'])
             mainWindow.webContents.setUserAgent(cdvElectronSettings['overrideUserAgent'])
