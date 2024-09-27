@@ -351,7 +351,8 @@ try
 
         mainWindow = new BrowserWindow(browserWindowOpts);
 
-        Menu.setApplicationMenu(null);
+        if(!cdvElectronSettings.browserWindow.webPreferences.devTools)
+            Menu.setApplicationMenu(null);
 
         if(cdvElectronSettings['overrideUserAgent'])
             mainWindow.webContents.setUserAgent(cdvElectronSettings['overrideUserAgent'])
