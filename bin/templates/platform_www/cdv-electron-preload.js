@@ -17,10 +17,10 @@
     under the License.
 */
 
-const { contextBridge, ipcRenderer } = require('electron');
-const { cordova } = require('./package.json');
+const {contextBridge, ipcRenderer} = require('electron');
+const {cordova} = require('./package.json');
 
-const { PluginResult } = require('./CordovaElectronCallbackContext.js');
+const {PluginResult} = require('./CordovaElectronCallbackContext.js');
 
 contextBridge.exposeInMainWorld('_cdvElectronIpc', {
     /**
@@ -33,40 +33,86 @@ contextBridge.exposeInMainWorld('_cdvElectronIpc', {
      * @param {string} callbackId
      * @returns {Promise<void>}
      */
-    exec: async (success, error, serviceName, action, args, callbackId) => {
+    exec: async (success, error, serviceName, action, args, callbackId) =>
+    {
+        const onError = (cause) =>
+        {
+            if (!error)
+            {
+                console.error("CHROME: Error while invoking service action '" + serviceName + '.' + action + "'. No error callback provided.", {
+                    args: args,
+                    cause: cause
+                });
+            }
+            else
+            {
+                try
+                {
+                    error(cause)
+                } catch (e)
+                {
+                    console.error("CHROME: Caught exception from error callback for service action " + serviceName + '.' + action
+                        + ". Better handle/catch this error in the error callback.", {
+                        args: args,
+                        cause: cause,
+                        error: e
+                    });
 
-        const _error = (e)=>{
-            console.error("CHROME: Exception while invoking service action '" + serviceName + '.' + action + "'", {args:args, cause: e});
-        }
-
-        error = error || _error;
-
-        success = success || function(){};
-
-        ipcRenderer.on(callbackId, (event, result) => {
-            if (result.status === PluginResult.STATUS_OK) {
-                success(result.data);
-            } else if (result.status && PluginResult.STATUS_ERROR) {
-                error(result.data);
-            } else {
-                error(new Error('Unexpected plugin result status code'));
+                }
             }
 
-            if (!result.keepCallback) {
+        }
+
+        const onSuccess = (result) =>
+        {
+            if (!success)
+                return;
+            try
+            {
+                success(result.data);
+            } catch (e)
+            {
+                onError({
+                    message: "CHROME: Caught exception from success callback for service action " + serviceName + '.' + action
+                        + ". Better handle/catch this error in the success callback.",
+                    cause: e,
+                    result: result
+                });
+            }
+        }
+
+
+        ipcRenderer.on(callbackId, (event, result) =>
+        {
+            if (result.status === PluginResult.STATUS_OK)
+            {
+                onSuccess(result);
+            }
+            else if (result.status && PluginResult.STATUS_ERROR)
+            {
+                onError(result.data);
+            }
+            else
+            {
+                onError(new Error('CHROME: Unexpected plugin result status code: ' + result.status));
+            }
+
+            if (!result.keepCallback)
+            {
                 ipcRenderer.removeAllListeners(callbackId);
             }
         });
-        try {
+        try
+        {
             //console.log("ipcRenderer.invoke(" + serviceName + ", " + action + ", [" +  (args || []).join(", ") + "], " +  callbackId + ")");
             await ipcRenderer.invoke('cdv-plugin-exec', serviceName, action, args, callbackId);
-        } catch (exception) {
-            const message = "CHROME: Exception while invoking service action '" + serviceName + '.' + action + "'";
+        } catch (exception)
+        {
+            const message = "CHROME: Caught unhandled exception from service action '" + serviceName + '.' + action + "'";
             console.error(message, exception);
-            error({ message, exception });
+            onError({message, exception});
         }
     },
 
-    hasService: (serviceName) => cordova &&
-            cordova.services &&
-            cordova.services[serviceName]
+    hasService: (serviceName) => cordova && cordova.services && cordova.services[serviceName]
 });
