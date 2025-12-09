@@ -17,8 +17,8 @@
     under the License.
 */
 
-const path = require('path');
-const fs = require('fs-extra');
+const path = require('node:path');
+const fs = require('node:fs');
 const { events } = require('cordova-common');
 const rewire = require('rewire');
 
@@ -78,7 +78,7 @@ describe('Handler export', () => {
 
                 // spies
                 spyOn(fs, 'readFileSync').and.returnValue(''); // fake scriptContent
-                spyOn(fs, 'ensureDirSync').and.returnValue(true);
+                spyOn(fs, 'mkdirSync').and.returnValue(true);
                 spyOn(fs, 'writeFileSync');
 
                 handler['js-module'].install(jsModule, plugin_dir, plugin_id, www_dir);
@@ -86,8 +86,8 @@ describe('Handler export', () => {
                 const moduleDetination = path.dirname(path.resolve(www_dir, 'plugins', plugin_id, jsModule.src));
                 const writeFileSyncContent = fs.writeFileSync.calls.argsFor(0)[1];
 
-                expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(plugin_dir, jsModule.src), 'utf-8');
-                expect(fs.ensureDirSync).toHaveBeenCalledWith(moduleDetination);
+                expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(plugin_dir, jsModule.src), 'utf8');
+                expect(fs.mkdirSync).toHaveBeenCalledWith(moduleDetination, { recursive: true });
                 expect(writeFileSyncContent).toContain(`cordova.define('${moduleName}'`);
 
                 return writeFileSyncContent;
@@ -119,12 +119,12 @@ describe('Handler export', () => {
                 const plugin_id = 'com.foo.dummy-plugin';
 
                 // spies
-                spyOn(fs, 'removeSync').and.returnValue(true);
+                spyOn(fs, 'rmSync').and.returnValue(true);
                 spyOn(events, 'emit');
 
                 handler['js-module'].uninstall(jsModule, www_dir, plugin_id);
 
-                expect(fs.removeSync).toHaveBeenCalledWith(path.join(www_dir, 'plugins', plugin_id));
+                expect(fs.rmSync).toHaveBeenCalledWith(path.join(www_dir, 'plugins', plugin_id), { recursive: true, force: true });
                 expect(events.emit).toHaveBeenCalledWith(
                     'verbose',
                     `js-module uninstall called : ${path.join('plugins', plugin_id, jsModule.src)}`
@@ -138,7 +138,7 @@ describe('Handler export', () => {
         const wwwDest = 'dest';
 
         describe('asset.install', () => {
-            it('should copySync assets to destination.', () => {
+            it('should cpSync assets to destination.', () => {
                 const asset = {
                     itemType: 'asset',
                     src: 'someSrc/ServiceWorker.js',
@@ -146,13 +146,13 @@ describe('Handler export', () => {
                 };
 
                 // Spies
-                spyOn(fs, 'copySync');
-                spyOn(fs, 'ensureDirSync').and.returnValue(true);
+                spyOn(fs, 'cpSync');
+                spyOn(fs, 'mkdirSync').and.returnValue(true);
 
                 handler.asset.install(asset, plugin_dir, wwwDest);
 
-                expect(fs.ensureDirSync).toHaveBeenCalled();
-                expect(fs.copySync).toHaveBeenCalledWith(jasmine.any(String), path.join('dest', asset.target));
+                expect(fs.mkdirSync).toHaveBeenCalled();
+                expect(fs.cpSync).toHaveBeenCalledWith(jasmine.any(String), path.join('dest', asset.target), { recursive: true });
             });
         });
 
@@ -162,13 +162,13 @@ describe('Handler export', () => {
                 const mockPluginId = 'com.foobar.random-plugin-id';
 
                 // Spies
-                spyOn(fs, 'removeSync').and.returnValue(true);
+                spyOn(fs, 'rmSync').and.returnValue(true);
 
                 handler.asset.uninstall(asset, wwwDest, mockPluginId);
 
-                expect(fs.removeSync).toHaveBeenCalled();
-                expect(fs.removeSync.calls.argsFor(0)[0]).toBe(path.join(wwwDest, asset.target));
-                expect(fs.removeSync.calls.argsFor(1)[0]).toBe(path.join(wwwDest, 'plugins', mockPluginId));
+                expect(fs.rmSync).toHaveBeenCalled();
+                expect(fs.rmSync.calls.argsFor(0)[0]).toBe(path.join(wwwDest, asset.target));
+                expect(fs.rmSync.calls.argsFor(1)[0]).toBe(path.join(wwwDest, 'plugins', mockPluginId));
             });
         });
     });
@@ -198,14 +198,14 @@ describe('Handler export', () => {
         const frameworkInstallPluginPackageFile = path.join(frameworkInstallPluginDir, 'src/electron/package.json');
 
         beforeEach(() => {
-            fs.ensureDirSync(tmpDir);
-            fs.copySync(path.resolve(fixturesDir, 'test-app-with-electron-plugin'), testProjectDir);
+            fs.mkdirSync(tmpDir, { recursive: true });
+            fs.cpSync(path.resolve(fixturesDir, 'test-app-with-electron-plugin'), testProjectDir, { recursive: true });
 
             spyOn(events, 'emit');
         });
 
         afterEach(() => {
-            fs.removeSync(tmpDir);
+            fs.rmSync(tmpDir, { recursive: true, force: true });
         });
 
         describe('framework.install', () => {
@@ -259,7 +259,7 @@ describe('Handler export', () => {
                 // Validate that sample plugin's service is registered.
                 const validateAppPackage = JSON.parse(fs.readFileSync(frameworkInstallProjectAppPackageFile, 'utf8'));
                 const test = validateAppPackage && validateAppPackage.cordova && validateAppPackage.cordova.services && validateAppPackage.cordova.services.Sample;
-                expect(test?.electronModule).toBe(frameworkInstallElectronPluginId);
+                expect(test).toBe(frameworkInstallElectronPluginId);
             });
 
             it('should not update the electron app package when there are no registered service', async () => {
@@ -303,7 +303,7 @@ describe('Handler export', () => {
                 // Validate that sample plugin's service is registered.
                 const validateAppPackage = JSON.parse(fs.readFileSync(frameworkInstallProjectAppPackageFile, 'utf8'));
                 const test = validateAppPackage && validateAppPackage.cordova && validateAppPackage.cordova.services && validateAppPackage.cordova.services.Sample;
-                expect(test?.electronModule).not.toBe(frameworkInstallElectronPluginId);
+                expect(test).not.toBe(frameworkInstallElectronPluginId);
             });
 
             it('should warn when there are conflicting service name between more then one plugin', async () => {
@@ -325,10 +325,7 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: {
-                        electronModule: 'cordova-plugin-sample-electron',
-                        pluginId: 'cordova-plugin-sample'
-                    }
+                    Sample: 'cordova-plugin-sample-electron'
                 };
 
                 fs.writeFileSync(
@@ -370,10 +367,7 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: {
-                        electronModule: 'cordova-plugin-sample-electron',
-                        pluginId: 'cordova-plugin-sample'
-                    }
+                    Sample: 'cordova-plugin-sample-electron'
                 };
 
                 fs.writeFileSync(
@@ -412,10 +406,7 @@ describe('Handler export', () => {
                 // fake some other sample service already registered
                 appPackage.cordova = appPackage.cordova || {};
                 appPackage.cordova.services = appPackage.cordova.services || {
-                    Sample: {
-                        electronModule: 'some-other-package-electron',
-                        pluginId: 'some-other-package'
-                    }
+                    Sample: 'some-other-package'
                 };
 
                 fs.writeFileSync(
