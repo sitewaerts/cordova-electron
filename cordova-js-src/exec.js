@@ -51,7 +51,7 @@ module.exports = function (success, fail, service, action, args) {
 
         if (proxy) {
             if (typeof success === 'function' || typeof fail === 'function') {
-                cordova.callbacks[callbackId] = { success: success, fail: fail };
+                cordova.callbacks[callbackId] = { success, fail };
             }
             try {
                 // callbackOptions param represents additional optional parameters command could pass back, like keepCallback or
