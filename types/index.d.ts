@@ -1,14 +1,16 @@
 // Type definitions for Apache Cordova Electron platform
 // Project: https://github.com/apache/cordova-electron
-// Definitions by: Microsoft Open Technologies Inc <http://msopentech.com>
-// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-//
-// Copyright (c) Microsoft Open Technologies, Inc.
 // Licensed under the MIT license.
 
 /// <reference types="electron" />
 
 import * as electron from "electron";
+
+interface PluginEvent {
+    pluginId: string
+    eventName: string,
+    payload?: any
+}
 
 interface CordovaElectronCallbackContext {
 
@@ -59,7 +61,7 @@ interface CordovaElectronPluginConfigContext extends CordovaElectronPluginContex
     /**
      * access to the app
      */
-    getApp():Electron.App
+    getApp(): Electron.App
 
     registerSchemeAsPrivileged(customScheme: electron.CustomScheme): void
 
@@ -70,21 +72,23 @@ interface CordovaElectronPluginConfigContext extends CordovaElectronPluginContex
 interface CordovaElectronPluginInitContext extends CordovaElectronPluginContext {
 
     /**
-     * lookup a plugin instance
+     * lookup a service/plugin instance
      */
     getService(serviceName: string): Promise<any>
 
     /**
      * access to the app
      */
-    getApp():Electron.App
+    getApp(): Electron.App
 
     /**
      * access to the apps main window
      */
     getMainWindow(): Electron.BrowserWindow
 
-    getAllSchemesPartitions():Array<string>
+    getAllSchemesPartitions(): Array<string>
+
+    sendPluginEvent(pluginEvent: PluginEvent): void
 
 }
 
@@ -115,3 +119,42 @@ interface CordovaElectronPluginInit {
 }
 
 type CordovaElectronPlugin = CordovaElectronPluginExec & CordovaElectronPluginConf & CordovaElectronPluginInit
+
+interface CdvElectronIpc {
+
+    /**
+     * invoke action on service/plugin (in main thread) and receive result via callbackId
+     * @param success
+     * @param error
+     * @param serviceName
+     * @param action
+     * @param args
+     * @param callbackId
+     */
+    exec: (success: (data: any) => void,
+           error: (error: any) => void | null,
+           serviceName: string,
+           action: string,
+           args: ArrayLike<any> | null,
+           callbackId: string) => Promise<void>
+
+    /**
+     * check if given service/plugin is available
+     * @param service
+     */
+    hasService: (service: string) => boolean
+
+    /**
+     * send event from main thread to renderer thread
+     * @param pluginId
+     * @param eventName
+     * @param handler
+     */
+    onPluginEvent: (pluginId: string,
+                    eventName: string,
+                    handler: (payload: any) => void) => () => void
+}
+
+interface Window {
+    _cdvElectronIpc: CdvElectronIpc
+}
