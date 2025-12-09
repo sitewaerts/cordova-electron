@@ -63,7 +63,6 @@ class CordovaElectronPluginConfigContext extends CordovaElectronPluginContext{
         return this._app;
     }
 
-
     /**
      * @param {electron.CustomScheme} customScheme
      * @void
@@ -144,6 +143,16 @@ class CordovaElectronPluginInitContext extends CordovaElectronPluginContext{
     getAllSchemesPartitions(){
         return this._allSchemesPartitions;
     }
+
+    /**
+     *
+     * @param pluginEvent
+     * @void
+     */
+    sendPluginEvent(pluginEvent){
+        this._mainWindow.webContents.send('cdv-plugin-events', pluginEvent);
+    }
+
 
 }
 

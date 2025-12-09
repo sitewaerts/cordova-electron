@@ -22,6 +22,10 @@ const {cordova} = require('./package.json');
 
 const {PluginResult} = require('./CordovaElectronCallbackContext.js');
 
+// usefully to find preload script sources in debugger as chrome console
+// links to source file
+console.log("executing cdv-electron-preload.js");
+
 contextBridge.exposeInMainWorld('_cdvElectronIpc', {
     /**
      *
@@ -114,5 +118,41 @@ contextBridge.exposeInMainWorld('_cdvElectronIpc', {
         }
     },
 
-    hasService: (serviceName) => cordova && cordova.services && cordova.services[serviceName]
+    hasService: (serviceName) => cordova && cordova.services && cordova.services[serviceName],
+
+    /**
+     *
+     * @param {string} pluginID
+     * @param {string} eventName
+     * @param {(payload?:any)=>void} handler
+     * @return {()=>void} remover
+     */
+    onPluginEvent: (pluginID, eventName, handler) =>
+    {
+        /**
+         *
+         * @type {IpcRendererEvent} event
+         * @type {PluginEvent} pluginEventInfo
+         */
+        const listener = (event, pluginEventInfo) =>
+        {
+            try
+            {
+                if (pluginEventInfo.pluginId === pluginID && pluginEventInfo.eventName === eventName)
+                {
+                    handler(pluginEventInfo.payload);
+                }
+            } catch (e)
+            {
+                console.error("cannot handle plugin event", {event: event, pluginEventInfo: pluginEventInfo, cause: e});
+            }
+        };
+
+        ipcRenderer.on('cdv-plugin-events', listener);
+        return () =>
+        {
+            ipcRenderer.removeListener('cdv-plugin-events', listener);
+        }
+
+    }
 });

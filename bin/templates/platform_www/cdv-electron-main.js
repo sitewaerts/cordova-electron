@@ -17,6 +17,7 @@
     under the License.
 */
 
+// Module to control application life, browser window and tray.
 const {
     app,
     net,
@@ -31,13 +32,18 @@ const cdvElectronSettings = require("./cdv-electron-settings.json");
 
 try
 {
-    const fs = require('fs');
-    const path = require('path');
+
+    const fs = require('node:fs');
+    const path = require('node:path');
     const url = require('url');
-    const {cordova} = require('./package.json');
+
+    // noinspection JSFileReferences
+    const { cordova } = require('./package.json');
+    // noinspection JSFileReferences
     const {installed_plugins} = require('./electron.json');
 
     /**
+     * Electron settings from .json file.
      * @type {*}
      */
     const cdvElectronSettings = require('./cdv-electron-settings.json');
@@ -52,11 +58,10 @@ try
 
     const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
         ? require('electron-devtools-installer')
-        : false;
+        : null;
+
 
     const scheme = cdvElectronSettings.scheme;
-    if (reservedScheme.includes(scheme))
-        throw new Error(`The scheme "${scheme}" can not be registered. Please use a non-reserved scheme.`);
     const hostname = cdvElectronSettings.hostname;
     const isFileProtocol = scheme === 'file';
 
@@ -68,6 +73,9 @@ try
      *  The hostname "localhost" can be changed but only set when scheme is not "file"
      */
     const basePath = (() => isFileProtocol ? `file://${__dirname}` : `${scheme}://${hostname}/application`)();
+
+    if (reservedScheme.includes(scheme))
+        throw new Error(`The scheme "${scheme}" can not be registered. Please use a non-reserved scheme.`);
 
 
     /**
@@ -344,10 +352,18 @@ try
             appIcon = path.join(__dirname, 'img/logo.png');
         }
 
+        // see https://www.electronjs.org/docs/latest/api/browser-window
         const browserWindowOpts = Object.assign({}, cdvElectronSettings.browserWindow, {icon: appIcon});
         browserWindowOpts.webPreferences.preload = path.join(app.getAppPath(), 'cdv-electron-preload.js');
         browserWindowOpts.webPreferences.contextIsolation = true;
-        browserWindowOpts.webPreferences.sandbox = false; // https://www.electronjs.org/docs/latest/tutorial/sandbox#disabling-the-sandbox-for-a-single-process
+        browserWindowOpts.webPreferences.nodeIntegration = false;
+
+        // https://www.electronjs.org/docs/latest/tutorial/sandbox#disabling-the-sandbox-for-a-single-process
+        // @todo review if using default "sandbox" is possible. When enabled, "Unable to load preload script:" error occurs.
+        // Other require statements also fails.
+        browserWindowOpts.webPreferences.sandbox = false;
+
+        // TODO: set browserWindowOpts.backgroundColor from config.xml
 
         mainWindow = new BrowserWindow(browserWindowOpts);
 
@@ -559,6 +575,7 @@ try
     //     p.registerSchemesAsPrivileged(customSchemes);
     // }
 
+    // see https://www.bigbinary.com/blog/deep-link-electron-app
     for(let protocol of configResult.defaultProtocols)
     {
         if (process.defaultApp) {

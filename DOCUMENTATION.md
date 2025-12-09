@@ -244,11 +244,11 @@ Set the `nodeIntegration` flag property to `true`.  By default, this property fl
 
 ```json
 {
-"browserWindow": {
-    "webPreferences": {
-        "nodeIntegration": false
+    "browserWindow": {
+        "webPreferences": {
+            "nodeIntegration": false
+        }
     }
-}
 }
 ```
 
@@ -549,7 +549,58 @@ By default, with no additional configuration, `cordova build electron` will buil
 | ------- | :---: |
 | nsis    |  x64  |
 
-### Customizing Build Configurations
+
+### Customizing Build Configurations (builtin)
+
+#### Languages
+
+Currently only available when app is packaged as APPX for windows.
+
+**Example `config.xml`:**
+
+```xml
+<platform name="electron">
+    <preference name="locales" value="en,en-US,de" />
+</platform>
+```
+
+
+#### Windows Capabilities
+
+Only available when app is packaged as APPX.
+
+**Example `config.xml`:**
+
+```xml
+<platform name="electron">
+    <preference name="WindowsCapability.internetClient" value="true" />
+    <preference name="WindowsCapability.CAPABILITY" value="true" />
+</platform>
+```
+
+For supported capabilities see [./lib/BuildJsonParser.js](lib/BuildJsonParser.js).
+
+#### Windows Specials
+
+Only available when app is packaged as APPX.
+
+**Example `config.xml`:**
+
+```xml
+<platform name="electron">
+  
+  <preference name="scheme" value="app" />
+  <preference name="hostname" value="electron-app" />
+  
+  <preference name="fullscreen" value="false" />
+
+  <preference name="WindowsTileShowNameOnTiles" value="true" />
+  <preference name="WindowsTileBackgroundColor" value="#464646" />
+  
+</platform>
+```
+
+### Customizing Build Configurations (extended)
 
 If for any reason you would like to customize the build configurations, modifications are placed within the `build.json` file located in the project's root directory. E.g. `{PROJECT_ROOT_DIR}/build.json`. This file contains all build configurations for all platforms (Android, Electron, iOS, Windows).
 
@@ -635,7 +686,7 @@ The configuration example below will generate `tar.gz`, `dmg` and `zip` packages
 | p5p          | &#9989; |        -         |             -              |
 | apk          | &#9989; |        -         |             -              |
 
-- **[1]** Only Window 10 can build AppX packages.
+- **[1]** Only Window 10+ can build AppX packages.
 
 #### Setting the Package `arch`
 
@@ -806,22 +857,55 @@ There are not signing requirements for Linux builds.
 
 ## Debugging
 
-To debug a packaged app start it with additional Arguments.
+### Windows
 
-Example for Windows: `test-app.exe --inspect-brk --remote-debugging-port=8315`
+To debug a packaged app start it with additional Arguments.
 
 Specify `--inspect-brk | --inspect` to debug the main process.
 
 Specify `--remote-debugging-port=8315` to debug the renderer process.
 
-### Windows
-When packaged apps exe is started via cmd shell, it prints stdio to console. This is causing the console to hang after all windows have been closed. 
-To avoid this, specify `set ELECTRON_NO_ATTACH_CONSOLE=1`. Stdio isn't printed to console anymore, but the console won't hang.
+
+#### NON APPX
+
+```cmd
+test-app.exe --inspect-brk --remote-debugging-port=8315
+```
+
+When packaged apps exe is started via cmd shell, it prints stdio to console. This is causing the console to hang after all windows have been closed.
+To avoid this, specify `set ELECTRON_NO_ATTACH_CONSOLE=1`. Stdio isn't printed to console anymore, but the console won't hang anymore.
+
+#### APPX
+
+```powershell
+Get-AppxPackage | Select-Object Name, PublisherId | Select-String "cleverdox"
+```
+
+Die App-ID ergibt sich aus `{Name}_{PublisherId}!{Name}`.
+
+```cmd
+start shell:appsFolder\de.cleverdox.cordova.test.app_8n4mck96dff7e!de.cleverdox.cordova.test.app  --inspect-brk --remote-debugging-port=8315
+```
+
+### Debug Preload Scripts
+
+Preload Scripts can be debugged in the Chrome Developer Tools attached to the Browser Window / Renderer Process.
+
+For packaged Apps they aren't available in the sources via `CTRL+P`. 
+
+
+To get to the source, you have the following oportunities: 
+  - Set a breakpoint in a renderer script that accesses an API provided by the preload script via `contextBridge.exposeInMainWorld`. When that breakpoint is reached you may follow the stack into the preload script.
+  - Watch out for the message `executing cdv-electron-preload.js` in the console Panel of Chrome Developer Tools. Chrome places a link to the preload-script beside the log message.
+
 
 ## Plugins
 
 All browser-based plugins are usable with the Electron platform.
 
-When adding a plugin, if the plugin supports both the `electron` and `browser` platform, the `electron` portion will be used. If the plugin misses `electron` but contains the `browser` implementation, it will fall back on the `browser` implementation.
+When adding a plugin, if the plugin supports both the `electron` and `browser` platform, the `electron` portion will be used.
+If the plugin misses `electron` but contains the `browser` implementation, it will fall back on the `browser` implementation.
 
-Internally, Electron is using Chromium (Chrome) as its web view. Some plugins may have conditions written specifically for each different browser. In this case, it may affect the behavior of what is intended. Since Electron may support feature that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
+Internally, Electron is using Chromium (Chrome) as its web view. Some plugins may have conditions written specifically for each different browser. 
+In this case, it may affect the behavior of what is intended. 
+Since Electron may support feature that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
