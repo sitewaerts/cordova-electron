@@ -35,4 +35,6 @@ npm-debug.log*
 node_modules
 
 # Built files during packaging
-bin/templates/platform_www/cordova.js
+# when loading platform directly from git cordova.js would be missing
+# to avoid this, we include cordova.js in the git repo
+#bin/templates/platform_www/cordova.js
