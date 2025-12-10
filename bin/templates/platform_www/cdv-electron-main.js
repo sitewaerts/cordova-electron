@@ -28,7 +28,6 @@ const {
     ipcMain,
     dialog
 } = require('electron');
-const cdvElectronSettings = require("./cdv-electron-settings.json");
 
 try
 {
@@ -60,6 +59,10 @@ try
         ? require('electron-devtools-installer')
         : null;
 
+    // https://stackoverflow.com/questions/39091964/remove-menubar-from-electron-app
+    // Call Menu.setApplicationMenu(null) before app.on("ready"), see https://github.com/electron/electron/issues/35512
+    if(!cdvElectronSettings.browserWindow.webPreferences.devTools && cdvElectronSettings.removeMenuBar)
+        Menu.setApplicationMenu(null);
 
     const scheme = cdvElectronSettings.scheme;
     const hostname = cdvElectronSettings.hostname;
@@ -366,9 +369,6 @@ try
         // TODO: set browserWindowOpts.backgroundColor from config.xml
 
         mainWindow = new BrowserWindow(browserWindowOpts);
-
-        if(!cdvElectronSettings.browserWindow.webPreferences.devTools)
-            Menu.setApplicationMenu(null);
 
         if(cdvElectronSettings['overrideUserAgent'])
             mainWindow.webContents.setUserAgent(cdvElectronSettings['overrideUserAgent'])

@@ -594,8 +594,17 @@ Only available when app is packaged as APPX.
   
   <preference name="fullscreen" value="false" />
 
+  <!-- https://www.electronjs.org/docs/latest/api/base-window#winautohidemenubar -->
+  <preference name="autoHideMenuBar" value="false" />
+
+  <!-- https://www.electronjs.org/docs/latest/api/menu#menusetapplicationmenumenu -->
+  <preference name="removeMenuBar" value="false" />
+
   <preference name="WindowsTileShowNameOnTiles" value="true" />
   <preference name="WindowsTileBackgroundColor" value="#464646" />
+  
+  <preference name="OverrideUserAgent" value="my agent (1.0.0)" />
+  <preference name="AppendUserAgent" value="(my agent (1.0.0))" />
   
 </platform>
 ```
