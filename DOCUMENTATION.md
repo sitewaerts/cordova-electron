@@ -21,6 +21,7 @@
 
 Electron is a framework that uses web technologies (HTML, CSS, and JS) to build cross-platform desktop applications.
 
+<!-- TOC -->
 - [Cordova Electron](#cordova-electron)
   - [System Requirements](#system-requirements)
     - [Linux](#linux)
@@ -31,6 +32,10 @@ Electron is a framework that uses web technologies (HTML, CSS, and JS) to build 
     - [Preview a Project](#preview-a-project)
     - [Build a Project](#build-a-project)
   - [Customizing the Application's Icon](#customizing-the-applications-icon)
+    - [Scoped Icon targets](#scoped-icon-targets)
+      - [Icon scope `appx:`](#icon-scope-appx)
+  - [Customizing App permissions](#customizing-app-permissions)
+    - [Declaring Windows Capabilities](#declaring-windows-capabilities)
   - [Customizing the Application's Window Options](#customizing-the-applications-window-options)
     - [How to Set the Window's Default Size](#how-to-set-the-windows-default-size)
     - [How to Disable the Window From Being Resizable](#how-to-disable-the-window-from-being-resizable)
@@ -40,15 +45,25 @@ Electron is a framework that uses web technologies (HTML, CSS, and JS) to build 
       - [Load a local HTML file using relative path from the `{project_dir}/www` directory](#load-a-local-html-file-using-relative-path-from-the-project_dirwww-directory)
       - [Load a local HTML using full path](#load-a-local-html-using-full-path)
       - [Load a remote URL](#load-a-remote-url)
+  - [Writing a Plugin](#writing-a-plugin)
+    - [Initializing](#initializing)
+    - [plugin.xml](#pluginxml)
+    - [package.json](#packagejson)
+    - [Writing the actual plugin](#writing-the-actual-plugin)
+    - [Error handling](#error-handling)
+    - [Multiple plugin results](#multiple-plugin-results)
   - [Customizing the Electron's Main Process](#customizing-the-electrons-main-process)
   - [Bundling Node Modules](#bundling-node-modules)
     - [Cordova Package Handling](#cordova-package-handling)
   - [DevTools](#devtools)
   - [Debugging the Application's Main Process](#debugging-the-applications-main-process)
-  - [Enable Developer Tool Extensions (Chrome Extensions)](#enable-developer-tool-extensions-chrome-extensions)
+  - [Enable Developer Tool Extensions (Chrome Extensions)](#enable-developer-tool-extensions--chrome-extensions-)
   - [Build Configurations](#build-configurations)
     - [Default Build Configurations](#default-build-configurations)
-    - [Customizing Build Configurations](#customizing-build-configurations)
+    - [Customizing Build Configurations (builtin)](#customizing-build-configurations--builtin-)
+      - [Languages](#languages)
+      - [Windows Specials](#windows-specials)
+    - [Customizing Build Configurations (extended)](#customizing-build-configurations--extended-)
       - [Adding a `package`](#adding-a-package)
       - [Setting the Package `arch`](#setting-the-package-arch)
     - [Multi-Platform Build Support](#multi-platform-build-support)
@@ -56,7 +71,13 @@ Electron is a framework that uses web technologies (HTML, CSS, and JS) to build 
     - [macOS Signing](#macos-signing)
     - [Windows Signing](#windows-signing)
     - [Linux Signing](#linux-signing)
+  - [Debugging](#debugging)
+    - [Windows](#windows)
+      - [NON APPX](#non-appx)
+      - [APPX](#appx)
+    - [Debug Preload Scripts](#debug-preload-scripts)
   - [Plugins](#plugins)
+<!-- TOC -->
 
 ## System Requirements
 
@@ -140,6 +161,7 @@ _Notice: macOS does not display custom icons when using `cordova run`. It defaul
 ```
 
 You can supply unique icons for the application and installer by setting the `target` attribute. As mentioned above, the installer image should be **512x512** pixels to work across all platforms.
+Both targets fallback to icon with unspecified target. Target 'installer' has an additional fallback to 'app';
 
 ```xml
 <platform name="electron">
@@ -166,11 +188,95 @@ If you want to support displays with different DPI densities at the same time, y
 </platform>
 ```
 
+### Scoped Icon targets
+Some platforms and packagers may support scoped icons.
+The scope is specified in the icons target attribute:
+```xml
+<platform name="electron">
+    <icon src="xyz.png" target="[scope]:[target]"/>
+</platform>
+```
+Currently only scope `appx:` is supported. Others may follow. 
+
+#### Icon scope `appx:`
+
+For Windows APPX packages you can specify a set of additional icons using a scoped target.
+The targets scope **must** always be specified as `appx:`.
+The file extension for the icons **must** be `.png`. 
+
+Mandatory Targets: `StoreLogo`, `Square150x150Logo`, `Square44x44Logo`, `Wide310x150Logo`.
+For any mandatory target that is not defined in `config.xml` a cordova default icon will be inserted into the appx package.
+
+Optional Targets:  `BadgeLogo`, `Square310x310Logo`, `Square71x71Logo`.
+
+Any other target will have no effect in this scope as they won't be referenced in the appx manifest.
+
+If no target is specified for this scope the `installer` icon is used as `StoreLogo`.
+
+You may append `scale` and `targetsize` to the target specification according to [Microsoft docs](https://learn.microsoft.com/en-us/windows/uwp/app-resources/images-tailored-for-scale-theme-contrast#qualify-an-image-resource-for-targetsize).
+Attention: `targetsize` is only applicable to square icons including the store logo.
+Max. scale is 400.
+
+```xml
+<platform name="electron">
+    <icon src="res/electron/appxStoreLogo.png" target="appx:StoreLogo"/>
+    <icon src="res/electron/appxSquare44x44Logo.png" target="appx:Square44x44Logo"/>
+    <icon src="res/electron/appxSquare44x44Logo-scale-200.png" target="appx:Square44x44Logo.scale-200"/>
+    <icon src="res/electron/appxSquare44x44Logo-size-48.png" target="appx:Square44x44Logo.targetsize-48"/>
+    <icon src="res/electron/appxSquare44x44Logo-size-48.png" target="appx:Square44x44Logo.targetsize-48_altform-unplated"/>
+</platform>
+```
+
+Images **must** precisely match the dimensions specified in the target name. 
+Don't forget to apply [scale](https://learn.microsoft.com/en-us/windows/uwp/app-resources/tailor-resources-lang-scale-contrast#scale) and/or [targetsize](https://learn.microsoft.com/en-us/windows/uwp/app-resources/tailor-resources-lang-scale-contrast#targetsize) if available.
+E.g. `appx:Square44x44Logo.scale-200` has to be `88x88` pixels and `appx:Square44x44Logo.targetsize-24` has to be `24x24` pixels.
+
+The `StoreLogo` **must** be square and should be `50x50` pixels.
+
+The `BadgeLogo` **must** be square and should be `33x33` pixels.
+
+Icons **must** be under 200 KB.
+
+
+Use `appx:Square44x44Logo.targetsize-48` and `appx:Square44x44Logo.targetsize-48_altform-unplated` for [optimized taskbar icons](https://stackoverflow.com/questions/37559708/why-is-the-size-of-taskbar-icon-of-my-windows-10-universal-app-built-with-apache) when your icon has no padding.
+
+Windows will add app name to tiles `Square150x150Logo` and `Wide310x150Logo` if the feature is enabled via 
+```xml
+<platform name="electron">
+    <preference name="WindowsTileShowNameOnTiles" value="true"/>
+</platform>
+```
+
+## Customizing App permissions
+
+### Declaring Windows Capabilities
+
+[Windows Capabilities](https://learn.microsoft.com/en-us/windows/uwp/packaging/app-capability-declarations) are supported in APPX packaged applications only.
+
+```xml
+<platform name="electron">
+    <preference name="WindowsCapability.internetClient" value="true"/>
+    <preference name="WindowsCapability.internetClientServer" value="true"/>
+    <preference name="WindowsCapability.privateNetworkClientServer" value="true"/>
+    <preference name="WindowsCapability.backgroundMediaPlayback" value="true"/>
+    <preference name="WindowsCapability.musicLibrary" value="true"/>
+    <preference name="WindowsCapability.picturesLibrary" value="true"/>
+    <preference name="WindowsCapability.videosLibrary" value="true"/>
+    <preference name="WindowsCapability.contacts" value="true"/>
+    <preference name="WindowsCapability.removableStorage" value="true"/>
+    <preference name="WindowsCapability.location" value="true"/>
+    <preference name="WindowsCapability.microphone" value="true"/>
+    <preference name="WindowsCapability.webcam" value="true"/>
+    <preference name="WindowsCapability.proximity" value="true"/>
+</platform>
+```
+For supported capabilities see [./lib/BuildJsonParser.js](lib/BuildJsonParser.js).
+
 ## Customizing the Application's Window Options
 
 Electron provides many options to manipulate the [`BrowserWindow`](https://electronjs.org/docs/api/browser-window). This section will cover how to configure a few basic options. For a full list of options, please see the [Electron's Docs - BrowserWindow Options](https://electronjs.org/docs/api/browser-window#new-browserwindowoptions).
 
-Working with a Cordova project, it is recommended to create an Electron settings file within the project's root directory, and set its the relative path in the preference option `ElectronSettingsFilePath`, in the `config.xml` file.
+Working with a Cordova project, it is recommended to create an Electron settings file within the project's root directory, and set its relative path in the preference option `ElectronSettingsFilePath`, in the `config.xml` file.
 
 **Example `config.xml`:**
 
@@ -186,8 +292,8 @@ To override or set any BrowserWindow options or supply arguments to the loadURL 
 
 ```json
 {
-    "browserWindow": { ... },
-    "browserWindowInstance": { ... }
+    "browserWindow": {},
+    "browserWindowInstance": {}
 }
 ```
 
@@ -236,11 +342,11 @@ Using the `fullscreen` flag property, you can force the application to launch in
 
 ### How to Support Node.js and Electron APIs
 
-Set the `nodeIntegration` flag property to `true`.  By default, this property flag is set to `false` to support popular libraries that insert symbols with the same names that Node.js and Electron already uses.
+Set the `nodeIntegration` flag property to `true`. By default, this property flag is set to `false` to support popular libraries that insert symbols with the same names that Node.js and Electron already uses.
 
 > You can read more about this at Electron docs: [I can not use jQuery/RequireJS/Meteor/AngularJS in Electron](https://electronjs.org/docs/faq#i-can-not-use-jqueryrequirejsmeteorangularjs-in-electron).
 
- **Example:**
+**Example:**
 
 ```json
 {
@@ -267,7 +373,8 @@ For Cordova Electron only: It is possible to override this option from the Elect
 
 To override the local HTML file, place your HTML file anywhere in the `{project_dir}/www` directory and define the path in the Electron settings file.
 
- **Example**
+**Example**
+
 ```json
 {
   "browserWindowInstance": {
@@ -282,7 +389,7 @@ To override the local HTML file, place your HTML file anywhere in the `{project_
 
 To override the local HTML file using a full path, define the location of the local HTML file in the Electron settings file.
 
- **Example**
+**Example**
 ```json
 {
   "browserWindowInstance": {
@@ -293,13 +400,12 @@ To override the local HTML file using a full path, define the location of the lo
 }
 ```
 
-
-
 #### Load a remote URL
 
 To load a remote address, define the `url` in the Electron settings file.
 
- **Example**
+**Example**
+
 ```json
 {
   "browserWindowInstance": {
@@ -312,7 +418,8 @@ To load a remote address, define the `url` in the Electron settings file.
 
 It is also possible to supply additional parameters using the [optional] `options` argument.
 
- **Example**
+**Example**
+
 ```json
 {
   "browserWindowInstance": {
@@ -323,16 +430,21 @@ It is also possible to supply additional parameters using the [optional] `option
       }
     }
   }
-  }
+}
 ```
 
 > For more information refer to [Electron documentation](https://electronjs.org/docs/api/browser-window#winloadurlurl-options).
 
 ## Writing a Plugin
+
 ### Initializing
+
 Add a directory for your plugin's electron platform under src/electron and in it, initialize an NPM repository (`npm init`)
+
 ### plugin.xml
+
 In your plugin.xml, add the following elements:
+
 ```xml
   <platform name="electron">
     <framework src="src/electron" />
@@ -428,7 +540,6 @@ module.exports = function (action, args, callbackContext) {
 ```
 In the example above, the `success` function will be called 4 times, with `0`, `1`, `2` and `'Last result'`.\
 After this, the listener for the callbackContext will be removed and subsequent calls will not be heard by the caller.
-
 
 ## Customizing the Electron's Main Process
 
@@ -532,23 +643,22 @@ By default, with no additional configuration, `cordova build electron` will buil
 
 **Linux**
 
-| Package | Arch  |
-| ------- | :---: |
-| tar.gz  |  x64  |
+| Package | Arch |
+|---------|:----:|
+| tar.gz  | x64  |
 
 **Mac**
 
-| Package | Arch  |
-| ------- | :---: |
-| dmg     |  x64  |
-| zip     |  x64  |
+| Package | Arch |
+|---------|:----:|
+| dmg     | x64  |
+| zip     | x64  |
 
 **Windows**
 
-| Package | Arch  |
-| ------- | :---: |
-| nsis    |  x64  |
-
+| Package | Arch |
+|---------|:----:|
+| nsis    | x64  |
 
 ### Customizing Build Configurations (builtin)
 
@@ -563,22 +673,6 @@ Currently only available when app is packaged as APPX for windows.
     <preference name="locales" value="en,en-US,de" />
 </platform>
 ```
-
-
-#### Windows Capabilities
-
-Only available when app is packaged as APPX.
-
-**Example `config.xml`:**
-
-```xml
-<platform name="electron">
-    <preference name="WindowsCapability.internetClient" value="true" />
-    <preference name="WindowsCapability.CAPABILITY" value="true" />
-</platform>
-```
-
-For supported capabilities see [./lib/BuildJsonParser.js](lib/BuildJsonParser.js).
 
 #### Windows Specials
 
@@ -668,7 +762,7 @@ The configuration example below will generate `tar.gz`, `dmg` and `zip` packages
 **Available Packages by Operating System**
 
 | Package Type |  Linux  |      macOS       |          Windows           |
-| ------------ | :-----: | :--------------: | :------------------------: |
+|--------------|:-------:|:----------------:|:--------------------------:|
 | default      |    -    | `dmg`<br />`zip` |             -              |
 | dmg          |    -    |     &#9989;      |             -              |
 | mas          |    -    |     &#9989;      |             -              |
@@ -732,7 +826,7 @@ Building for multiple platforms on a single operating system may possible but ha
 The matrix below shows each host OS and for which platforms they are capable of building applications.
 
 | Host <sup>**[1]**</sup> |  Linux  |   Mac   |           Window            |
-| ----------------------- | :-----: | :-----: | :-------------------------: |
+|-------------------------|:-------:|:-------:|:---------------------------:|
 | Linux                   | &#9989; |         | &#10071; <sup>**[2]**</sup> |
 | Mac <sup>**[3]**</sup>  | &#9989; | &#9989; | &#10071; <sup>**[2]**</sup> |
 | Window                  |         |         |           &#9989;           |
@@ -767,7 +861,7 @@ All accepted properties are documented at
 There are three types of signing targets. (`debug`, `release`, and `store`). Each section has the following properties:
 
 | key                                                                                                                                                 | description                                                                                                                      |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | entitlements                                                                                                                                        | String path value to entitlements file.                                                                                          |
 | entitlementsInherit                                                                                                                                 | String path value to the entitlements file which inherits the security settings.                                                 |
 | identity                                                                                                                                            | String value of the name of the certificate.                                                                                     |
@@ -799,7 +893,7 @@ There are three types of signing targets. (`debug`, `release`, and `store`). Eac
 All accepted properties are documented at https://www.electron.build/configuration/mac
 
 For macOS signing, there are a few exceptions to how the signing information is used.
-By default, all packages with the exception of `mas` and `mas-dev`, use the `debug` and `release` signing configurations.
+By default, all packages except `mas` and `mas-dev`, use the `debug` and `release` signing  configurations.
 
 Using the example config above, let's go over some use cases to better understand the exceptions.
 
@@ -831,7 +925,7 @@ The command above will:
 The signing information is comprised of two types. (`debug`, `release`). Each section has the following properties:
 
 | key                       | description                                                                                                                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | certificateFile           | String path to the certificate file.                                                                                                                 |
 | certificatePassword       | String value of the certificate file's password.<br /><br />**Alternative**: The password can be set on the environment variable `CSC_KEY_PASSWORD`. |
 | certificateSubjectName    | String value of the signing certificate's subject.<br /><br />&#10071; Required for EV Code Signing and requires Windows                             |
@@ -863,7 +957,6 @@ All accepted properties are documented at https://www.electron.build/configurati
 
 There are not signing requirements for Linux builds.
 
-
 ## Debugging
 
 ### Windows
@@ -873,7 +966,6 @@ To debug a packaged app start it with additional Arguments.
 Specify `--inspect-brk | --inspect` to debug the main process.
 
 Specify `--remote-debugging-port=8315` to debug the renderer process.
-
 
 #### NON APPX
 
@@ -917,4 +1009,4 @@ If the plugin misses `electron` but contains the `browser` implementation, it wi
 
 Internally, Electron is using Chromium (Chrome) as its web view. Some plugins may have conditions written specifically for each different browser. 
 In this case, it may affect the behavior of what is intended. 
-Since Electron may support feature that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
+Since Electron may support features that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
