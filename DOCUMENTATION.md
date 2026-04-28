@@ -696,6 +696,9 @@ Only available when app is packaged as APPX.
 
   <preference name="WindowsTileShowNameOnTiles" value="true" />
   <preference name="WindowsTileBackgroundColor" value="#464646" />
+
+  <!-- https://www.electron.build/appx.html#identityname -->
+  <preference name="WindowsStoreIdentityName" value="YourCompany.YourAppPackageId" />
   
   <preference name="OverrideUserAgent" value="my agent (1.0.0)" />
   <preference name="AppendUserAgent" value="(my agent (1.0.0))" />
@@ -951,7 +954,7 @@ The signing information is comprised of two types. (`debug`, `release`). Each se
 }
 ```
 
-All accepted properties are documented at https://www.electron.build/configuration/win 
+All accepted properties are documented at https://www.electron.build/app-builder-lib.interface.windowssigntoolconfiguration 
 
 ### Linux Signing
 
@@ -1010,3 +1013,11 @@ If the plugin misses `electron` but contains the `browser` implementation, it wi
 Internally, Electron is using Chromium (Chrome) as its web view. Some plugins may have conditions written specifically for each different browser. 
 In this case, it may affect the behavior of what is intended. 
 Since Electron may support features that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
+
+
+## Electron
+
+If you're planing to switch to a newer version of electron:
+
+- update version number at package.json/dependencies/electron
+- check [breaking changes](https://www.electronjs.org/docs/latest/breaking-changes) and apply appropriate changes to this projects code
