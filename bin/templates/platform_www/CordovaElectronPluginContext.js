@@ -43,8 +43,8 @@ class CordovaElectronPluginConfigContext extends CordovaElectronPluginContext{
      * @param {Record<string, string> | null} variables
      * @param {string} scheme
      * @param {string} hostname
-     * @param {electron.App} app
-     * @param {Record<string, electron.CustomScheme>} schemes
+     * @param {Electron.App} app
+     * @param {Record<string, Electron.CustomScheme>} schemes
      * @param {Array<string>} defaultProtocols
      * @param {Array<string>} allSchemesPartitions
      */
@@ -64,7 +64,7 @@ class CordovaElectronPluginConfigContext extends CordovaElectronPluginContext{
     }
 
     /**
-     * @param {electron.CustomScheme} customScheme
+     * @param {Electron.CustomScheme} customScheme
      * @void
      */
 
