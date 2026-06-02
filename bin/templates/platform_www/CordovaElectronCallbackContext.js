@@ -119,7 +119,7 @@ PluginResult.ERROR_INVOCATION_EXCEPTION_CHROME = 64;
  * @param {any} data
  * @return {any}
  */
-function detachData(data){
+function plainData(data){
     if(data === undefined || data === null)
         return undefined;
     return JSON.parse(JSON.stringify(data, CENSOR()));
@@ -140,10 +140,12 @@ class CordovaElectronCallbackContext
     }
 
     /**
-     * @param {any} result
+     * @param {PluginResult} result
      * @void
      */
     sendPluginResult (result) {
+        // errors will be logged to console inside webContents.send (not thrown to caller)
+        // so avoid passing invalid data as it is hard to debug
         this.window.webContents.send(this.contextId, result);
     }
 
@@ -153,7 +155,7 @@ class CordovaElectronCallbackContext
      */
     progress (data) {
         try {
-            this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, detachData(data), true));
+            this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, plainData(data), true));
         } catch (e) {
             console.error("cannot send plugin progress", {data: data, cause: e});
         }
@@ -165,12 +167,15 @@ class CordovaElectronCallbackContext
      */
     success (data) {
         try {
-            // do not detach data to let electron handle the serialization. electron supports special handling when passing e.g. buffers.
+            // assert invalid data
+            structuredClone(data);
+
+            // do not plain data to let electron handle the serialization. electron supports special handling when passing e.g. buffers.
             this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
         } catch (e) {
             console.error("cannot send plugin success", {data: data, cause: e});
-            const errorData = detachData(e);
-            errorData.successData = detachData(data);
+            const errorData = plainData(e);
+            errorData.successData = plainData(data);
             this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, errorData, false));
         }
     }
@@ -180,7 +185,7 @@ class CordovaElectronCallbackContext
      * @void
      */
     error (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, detachData(data), false));
+        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, plainData(data), false));
     }
 }
 
