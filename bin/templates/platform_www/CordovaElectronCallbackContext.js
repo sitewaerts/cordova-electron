@@ -115,6 +115,16 @@ PluginResult.ERROR_UNEXPECTED_RESULT = 16;
 PluginResult.ERROR_INVOCATION_EXCEPTION_NODE = 32;
 PluginResult.ERROR_INVOCATION_EXCEPTION_CHROME = 64;
 
+/**
+ * @param {any} data
+ * @return {any}
+ */
+function detachData(data){
+    if(data === undefined || data === null)
+        return undefined;
+    return JSON.parse(JSON.stringify(data, CENSOR()));
+}
+
 class CordovaElectronCallbackContext
 {
     /**
@@ -134,8 +144,6 @@ class CordovaElectronCallbackContext
      * @void
      */
     sendPluginResult (result) {
-        if(result)
-            result = JSON.parse(JSON.stringify(result, CENSOR()));
         this.window.webContents.send(this.contextId, result);
     }
 
@@ -144,7 +152,11 @@ class CordovaElectronCallbackContext
      * @void
      */
     progress (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, true));
+        try {
+            this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, detachData(data), true));
+        } catch (e) {
+            console.error("cannot send plugin progress", {data: data, cause: e});
+        }
     }
 
     /**
@@ -152,7 +164,15 @@ class CordovaElectronCallbackContext
      * @void
      */
     success (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
+        try {
+            // do not detach data to let electron handle the serialization. electron supports special handling when passing e.g. buffers.
+            this.sendPluginResult(new PluginResult(PluginResult.STATUS_OK, data, false));
+        } catch (e) {
+            console.error("cannot send plugin success", {data: data, cause: e});
+            const errorData = detachData(e);
+            errorData.successData = detachData(data);
+            this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, errorData, false));
+        }
     }
 
     /**
@@ -160,7 +180,7 @@ class CordovaElectronCallbackContext
      * @void
      */
     error (data) {
-        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, data, false));
+        this.sendPluginResult(new PluginResult(PluginResult.STATUS_ERROR, detachData(data), false));
     }
 }
 
