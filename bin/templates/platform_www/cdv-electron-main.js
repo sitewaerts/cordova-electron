@@ -28,18 +28,18 @@ const {
     ipcMain,
     dialog
 } = require('electron');
-const reservedScheme = require("./cdv-reserved-scheme.json");
+
+const fs = require('node:fs');
+const path = require('node:path');
+const url = require('url');
 
 const FILE_SCHEME = 'file';
 
-try
-{
-    const fs = require('node:fs');
-    const path = require('node:path');
-    const url = require('url');
+
+(async () => {
 
     // noinspection JSFileReferences
-    const { cordova } = require('./package.json');
+    const {cordova} = require('./package.json');
     app.setAppUserModelId(cordova.name);
 
 
@@ -66,7 +66,7 @@ try
 
     // https://stackoverflow.com/questions/39091964/remove-menubar-from-electron-app
     // Call Menu.setApplicationMenu(null) before app.on("ready"), see https://github.com/electron/electron/issues/35512
-    if(!cdvElectronSettings.browserWindow.webPreferences.devTools && cdvElectronSettings.removeMenuBar)
+    if (!cdvElectronSettings.browserWindow.webPreferences.devTools && cdvElectronSettings.removeMenuBar)
         Menu.setApplicationMenu(null);
 
     const scheme = cdvElectronSettings.scheme;
@@ -100,21 +100,18 @@ try
      */
     let allSchemesPartitions = [];
 
-    class Service
-    {
+    class Service {
         /**
          *
          * @param {string} serviceName
          */
-        constructor(serviceName)
-        {
+        constructor(serviceName) {
             this.serviceName = serviceName;
             this._initialized = false;
 
             const serviceInfo = cordova && cordova.services && cordova.services[serviceName];
             // this condition should never be met, exec.js already tests for it.
-            if (!serviceInfo)
-            {
+            if (!serviceInfo) {
                 console.error(`Invalid Service. Service '${this.serviceName}' does not have an electron implementation.`);
                 /**
                  * @param {string} action
@@ -122,8 +119,7 @@ try
                  * @param {CordovaElectronCallbackContext} callbackContext
                  * @private
                  */
-                this._exec = (action, args, callbackContext) =>
-                {
+                this._exec = (action, args, callbackContext) => {
                     const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' isn't available.`;
                     console.error(message);
                     callbackContext.error(message)
@@ -136,8 +132,7 @@ try
 
             const module = require(this.module);
 
-            if (typeof module !== 'function')
-            {
+            if (typeof module !== 'function') {
                 console.warn('WARNING! Plugin ' + this.module + ' is using a deprecated API which is lacking support for progress callbacks. Migrate to the current cordova-electron Plugin API. Support for this API may be removed in future releases.');
 
                 const _impl = module;
@@ -149,44 +144,35 @@ try
                  * @param {CordovaElectronCallbackContext} callbackContext
                  * @private
                  */
-                this._exec = (action, args, callbackContext) =>
-                {
+                this._exec = (action, args, callbackContext) => {
                     // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') ...');
 
                     const _implAction = _impl[action];
-                    if (!_implAction)
-                    {
+                    if (!_implAction) {
                         const message = `Invalid action. Service '${this.module}' does not have an electron implementation for action '${action}'.`;
                         callbackContext.error(message);
                         return;
                     }
 
-                    Promise.resolve(_implAction(args)).then((result) =>
-                    {
+                    Promise.resolve(_implAction(args)).then((result) => {
                         // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') done', result);
                         callbackContext.success(result);
-                    }, (error) =>
-                    {
+                    }, (error) => {
                         // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') failed', error);
                         callbackContext.error(error);
                     });
                 }
 
                 this._initialized = true;
-            }
-            else
-            {
+            } else {
 
                 /**
                  * @type {Promise<any>}
                  * @private
                  */
-                const _impl = this._impl = (async () =>
-                {
-                    if (module.initialize)
-                    {
-                        try
-                        {
+                const _impl = this._impl = (async () => {
+                    if (module.initialize) {
+                        try {
                             await app.whenReady();
                             await module.initialize(new CordovaElectronPluginInitContext(
                                 installed_plugins[this.pluginId],
@@ -198,8 +184,7 @@ try
                                 allSchemesPartitions
                             ));
                             this._initialized = true;
-                        } catch (error)
-                        {
+                        } catch (error) {
                             console.error("cannot init module " + this.module + " for service " + serviceName, error);
                             /**
                              * @param {string} action
@@ -207,8 +192,7 @@ try
                              * @param {CordovaElectronCallbackContext} callbackContext
                              * @private
                              */
-                            this._exec = (action, args, callbackContext) =>
-                            {
+                            this._exec = (action, args, callbackContext) => {
                                 const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' wasn't successfully initialized.`;
                                 console.error(message);
                                 callbackContext.error(message)
@@ -216,9 +200,7 @@ try
                             this._initialized = true;
                             return null;
                         }
-                    }
-                    else
-                    {
+                    } else {
                         this._initialized = true;
                     }
                     return module;
@@ -230,34 +212,25 @@ try
                  * @param {CordovaElectronCallbackContext} callbackContext
                  * @private
                  */
-                this._exec = (action, args, callbackContext) =>
-                {
+                this._exec = (action, args, callbackContext) => {
                     _impl
-                        .then((impl) =>
-                        {
+                        .then((impl) => {
                             return impl ? impl(action, args, callbackContext) : 'service ' + serviceName + 'not available'
                         })
-                        .then((result) =>
-                        {
-                            if (result === true)
-                            {
+                        .then((result) => {
+                            if (result === true) {
                                 // action found and executed. success/error handling via callbackContext performed inside the action impl
                                 // nothing to do here
-                            }
-                            else if (result === false)
-                            {
+                            } else if (result === false) {
                                 const message = `Invalid action. Service '${this.module}' does not have an electron implementation for action '${action}'.`;
                                 callbackContext.error(message);
-                            }
-                            else
-                            {
+                            } else {
                                 const message = 'Unexpected plugin exec result' + result;
                                 console.error(message, result);
                                 callbackContext.error(message);
                             }
                         })
-                        .catch((exception) =>
-                        {
+                        .catch((exception) => {
                             const message = "Unexpected exception while invoking service action '" + this.module + '.' + action + "'\r\n" + exception;
                             console.error(message, exception);
                             callbackContext.error({message, exception});
@@ -273,10 +246,8 @@ try
          * @param {ConfigureResult} result
          * @return {Promise<void>}
          */
-        async configure(result)
-        {
-            try
-            {
+        async configure(result) {
+            try {
                 const module = require(this.module);
                 if (module.configure)
                     await module.configure(new CordovaElectronPluginConfigContext(
@@ -288,8 +259,7 @@ try
                         result.defaultProtocols,
                         result.allSchemesPartitions
                     ))
-            } catch (e)
-            {
+            } catch (e) {
                 const message = "cannot configure module '" + this.module + "' for service '" + this.serviceName + "': " + e.message;
                 console.error(message, e);
                 throw new Error(message);
@@ -299,24 +269,21 @@ try
         /**
          * @return {boolean}
          */
-        isInitialized()
-        {
+        isInitialized() {
             return this._initialized;
         }
 
         /**
          * @return {Promise<void>}
          */
-        initialized()
-        {
+        initialized() {
             return this._impl.then();
         }
 
         /**
          * @return {Promise<any>}
          */
-        getImpl()
-        {
+        getImpl() {
             return this._impl;
         }
 
@@ -327,8 +294,7 @@ try
          * @param {CordovaElectronCallbackContext} callbackContext
          * @void
          */
-        exec(action, args, callbackContext)
-        {
+        exec(action, args, callbackContext) {
             this._exec(action, args, callbackContext)
         }
 
@@ -344,8 +310,7 @@ try
      * @param {string} serviceName
      * @returns {Service}
      */
-    Service.getService = (serviceName) =>
-    {
+    Service.getService = (serviceName) => {
         return Service._SERVICES[serviceName] = Service._SERVICES[serviceName] || new Service(serviceName);
     }
 
@@ -353,11 +318,9 @@ try
      * @param {string} serviceName
      * @returns {Promise<any>}
      */
-    Service.serviceLoader = (serviceName) =>
-    {
+    Service.serviceLoader = (serviceName) => {
         let s = Service._SERVICES[serviceName];
-        if (s && !s.isInitialized())
-        {
+        if (s && !s.isInitialized()) {
             // TODO detect circular dependencies here ...
             // return Promise.reject("circular service dependency detected. Requested service '" + serviceName + "' not fully initialized");
         }
@@ -367,25 +330,17 @@ try
     }
 
 
-    function createWindow()
-    {
+    function createWindow() {
         // Create the browser window.
         let appIcon;
-        if (fs.existsSync(path.join(__dirname, 'img/app.ico')))
-        {
+        if (fs.existsSync(path.join(__dirname, 'img/app.ico'))) {
             appIcon = path.join(__dirname, 'img/app.ico');
-        }
-        else if (fs.existsSync(path.join(__dirname, 'img/app.png')))
-        {
+        } else if (fs.existsSync(path.join(__dirname, 'img/app.png'))) {
             appIcon = path.join(__dirname, 'img/app.png');
-        }
-        else if (fs.existsSync(path.join(__dirname, 'img/icon.png')))
-        {
+        } else if (fs.existsSync(path.join(__dirname, 'img/icon.png'))) {
             // obsolete ??
             appIcon = path.join(__dirname, 'img/icon.png');
-        }
-        else
-        {
+        } else {
             appIcon = path.join(__dirname, 'img/logo.png');
         }
 
@@ -404,15 +359,14 @@ try
 
         mainWindow = new BrowserWindow(browserWindowOpts);
 
-        if(cdvElectronSettings['overrideUserAgent'])
+        if (cdvElectronSettings['overrideUserAgent'])
             mainWindow.webContents.setUserAgent(cdvElectronSettings['overrideUserAgent'])
-        else if(cdvElectronSettings['appendUserAgent'])
+        else if (cdvElectronSettings['appendUserAgent'])
             mainWindow.webContents.setUserAgent(mainWindow.webContents.getUserAgent() + " " + cdvElectronSettings['appendUserAgent'])
 
 
         // Emitted when the window is closed.
-        mainWindow.once('closed', () =>
-        {
+        mainWindow.once('closed', () => {
             mainWindow.removeAllListeners('closed');
             console.log('mainWindow.closed')
             // Dereference the window object, usually you would store windows
@@ -422,21 +376,18 @@ try
         });
     }
 
-    function loadStartPage()
-    {
+    function loadStartPage() {
         // Load a local HTML file or a remote URL.
         const url = cdvElectronSettings.browserWindowInstance.loadURL.url;
         const loadUrl = url.includes('://') ? url : `${basePath}/${url}`;
         const loadUrlOpts = Object.assign({}, cdvElectronSettings.browserWindowInstance.loadURL.options);
 
-        mainWindow.loadURL(loadUrl, loadUrlOpts).catch((error) =>
-        {
+        mainWindow.loadURL(loadUrl, loadUrlOpts).catch((error) => {
             console.error("cannot load main window " + loadUrl, error, loadUrlOpts);
         });
 
         // Open the DevTools.
-        if (cdvElectronSettings.browserWindow.webPreferences.devTools)
-        {
+        if (cdvElectronSettings.browserWindow.webPreferences.devTools) {
             mainWindow.webContents.openDevTools();
         }
     }
@@ -453,42 +404,35 @@ try
      *
      * @return {Promise<ConfigureResult>}
      */
-    async function configureServices()
-    {
+    async function configureServices() {
 
         /**
          * @type {ConfigureResult}
          */
         const result = {schemes: {}, defaultProtocols: [], allSchemesPartitions: allSchemesPartitions};
-        if (cordova?.services)
-        {
+        if (cordova?.services) {
             for (const serviceName in cordova.services)
                 await Service.getService(serviceName).configure(result);
         }
         return result;
     }
 
-    async function initPlugins()
-    {
+    async function initPlugins() {
         if (!cordova?.services)
             return;
         for (const serviceName in cordova.services)
             await Service.getService(serviceName).initialized();
     }
 
-    function configureProtocol()
-    {
+    function configureProtocol() {
         /**
          *
          * @param {Electron.Protocol} protocol
          */
-        function configure(protocol)
-        {
+        function configure(protocol) {
             // restrict file scheme handler to app path
-            if (!protocol.isProtocolIntercepted(FILE_SCHEME))
-            {
-                protocol.interceptFileProtocol(FILE_SCHEME, (request, cb) =>
-                {
+            if (!protocol.isProtocolIntercepted(FILE_SCHEME)) {
+                protocol.interceptFileProtocol(FILE_SCHEME, (request, cb) => {
                     // remove query and hash
                     const u = (request.url.split('?')[0]).split('#')[0];
                     const osPath = path.normalize(url.fileURLToPath(u));
@@ -505,10 +449,8 @@ try
 
             // register custom protocol handler, if not already registered by cordova-plugin-file (or others)
             // obviously there is a bug in electron: protocol.handle cannot overwrite already registered protocol even if protocol.unhandle is called
-            if (!protocol.isProtocolHandled(scheme))
-            {
-                protocol.handle(scheme, (request) =>
-                {
+            if (!protocol.isProtocolHandled(scheme)) {
+                protocol.handle(scheme, (request) => {
                     // remove query and hash
                     const u = (request.url.split('?')[0]).split('#')[0];
 
@@ -534,18 +476,15 @@ try
         // see https://www.electronjs.org/docs/latest/api/protocol#using-protocol-with-a-custom-partition-or-session
         //configure(mainWindow.webContents.session.protocol);
         configure(protocol);
-        for(const partition of configResult.allSchemesPartitions){
+        for (const partition of configResult.allSchemesPartitions) {
             configure(session.fromPartition(partition).protocol);
         }
 
     }
 
-    function startApp()
-    {
-        (async () =>
-        {
-            if (devTools && cdvElectronSettings.devToolsExtension)
-            {
+    function startApp() {
+        (async () => {
+            if (devTools && cdvElectronSettings.devToolsExtension) {
                 const extensions = cdvElectronSettings.devToolsExtension.map(id => devTools[id] || id);
                 await devTools.default(extensions) // default = install extension
                     .then((result) => console.log(`Added extensions: '${result}'`))
@@ -555,8 +494,7 @@ try
             await initPlugins();
             configureProtocol();
             loadStartPage();
-        })().catch((error) =>
-        {
+        })().catch((error) => {
             console.error("cannot start app", error);
         })
     }
@@ -566,6 +504,7 @@ try
 
 
     const configResult = await configureServices();
+
 
     /**
      *
@@ -585,8 +524,7 @@ try
             }
         }
     ];
-    for (let schemeId in configResult.schemes)
-    {
+    for (let schemeId in configResult.schemes) {
         const schemeDef = configResult.schemes[schemeId];
         if (reservedScheme.includes(schemeDef.scheme))
             throw new Error(`The scheme "${schemeDef.scheme}" can not be registered. Please use a non-reserved scheme.`);
@@ -601,8 +539,7 @@ try
     // }
 
     // see https://www.bigbinary.com/blog/deep-link-electron-app
-    for(let protocol of configResult.defaultProtocols)
-    {
+    for (let protocol of configResult.defaultProtocols) {
         if (process.defaultApp) {
             if (process.argv.length >= 2) {
                 app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])])
@@ -615,20 +552,17 @@ try
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-    app.on('ready', () =>
-    {
+    app.on('ready', () => {
         startApp();
     });
 
 // Quit when all windows are closed.
-    app.on('window-all-closed', () =>
-    {
+    app.on('window-all-closed', () => {
         //console.log('window-all-closed');
         mainWindow = null;
         // On OS X it is common for applications and their menu bar
         // to stay active until the user quits explicitly with Cmd + Q
-        if (process.platform !== 'darwin')
-        {
+        if (process.platform !== 'darwin') {
             // Windows
             // app hanging after closing all windows if started vie cmd / console
             // to avoid this: set ELECTRON_NO_ATTACH_CONSOLE=1
@@ -638,28 +572,23 @@ try
         }
     });
 
-    app.on('activate', () =>
-    {
+    app.on('activate', () => {
         //console.log('activate');
         // On OS X it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
-        if (mainWindow === null)
-        {
+        if (mainWindow === null) {
             startApp();
         }
     });
 
-    ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) =>
-    {
+    ipcMain.handle('cdv-plugin-exec', (_, serviceName, action, args, callbackId) => {
         // This function should never return a rejected promise or throw an exception, as otherwise ipcRenderer callback will convert the parameter to a string encapsulated in an Error. See https://github.com/electron/electron/issues/24427
 
         const callbackContext = new CordovaElectronCallbackContext(callbackId, mainWindow);
 
-        try
-        {
+        try {
             Service.getService(serviceName).exec(action, args, callbackContext);
-        } catch (error)
-        {
+        } catch (error) {
             const message = "Unexpected exception while invoking service action '" + serviceName + '.' + action + "'\r\n" + error;
             console.error(message, error);
             callbackContext.error({message, error});
@@ -667,15 +596,13 @@ try
 
     });
 
-} catch (error)
-{
-    try
-    {
+})().catch((error) => {
+    try {
         // avoid https://github.com/electron/electron/issues/40606
         console.error("cannot init cdx-electron-main.js", error);
         dialog.showErrorBox("Cannot start Cordova App", error.stack || error);
-    } finally
-    {
+    } finally {
         app.exit(1);
     }
-}
+
+});
