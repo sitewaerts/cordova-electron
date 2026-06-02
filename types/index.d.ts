@@ -106,7 +106,7 @@ interface CordovaElectronPluginConf {
      * plugin may use electron main process apis which must be called before 'ready' event is fired
      * plugin may apply plugin-variables defined at deploy time
      */
-    configure?: (ctx: CordovaElectronPluginConfigContext) => void
+    configure?: (ctx: CordovaElectronPluginConfigContext) => Promise<void> | void
 }
 
 interface CordovaElectronPluginInit {
