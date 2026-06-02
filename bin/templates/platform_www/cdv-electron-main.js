@@ -39,8 +39,8 @@ const FILE_SCHEME = 'file';
 (async () => {
 
     // noinspection JSFileReferences
-    const {cordova} = require('./package.json');
-    app.setAppUserModelId(cordova.name);
+    const {cordova, name} = require('./package.json');
+    app.setAppUserModelId(name);
 
 
     // noinspection JSFileReferences
