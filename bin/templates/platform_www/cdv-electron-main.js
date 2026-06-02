@@ -28,16 +28,21 @@ const {
     ipcMain,
     dialog
 } = require('electron');
+const reservedScheme = require("./cdv-reserved-scheme.json");
+
+const FILE_SCHEME = 'file';
 
 try
 {
-
     const fs = require('node:fs');
     const path = require('node:path');
     const url = require('url');
 
     // noinspection JSFileReferences
     const { cordova } = require('./package.json');
+    app.setAppUserModelId(cordova.name);
+
+
     // noinspection JSFileReferences
     const {installed_plugins} = require('./electron.json');
 
@@ -66,16 +71,16 @@ try
 
     const scheme = cdvElectronSettings.scheme;
     const hostname = cdvElectronSettings.hostname;
-    const isFileProtocol = scheme === 'file';
+    const isFileProtocol = scheme === FILE_SCHEME;
 
     /**
      * The base url path.
      * E.g:
      * When scheme is defined as "file" the base path is "file://path-to-the-app-root-directory"
-     * When scheme is anything except "file", for example "app", the base path will be "app://localhost/application"
-     *  The hostname "localhost" can be changed but only set when scheme is not "file"
+     * When scheme is anything except "file", for example "app", the base path will be "app://HOSTNAME/application"
+     *  The HOSTNAME is configurable, but ignored when scheme is "file"
      */
-    const basePath = (() => isFileProtocol ? `file://${__dirname}` : `${scheme}://${hostname}/application`)();
+    const basePath = (() => isFileProtocol ? `${FILE_SCHEME}://${__dirname}` : `${scheme}://${hostname}/application`)();
 
     if (reservedScheme.includes(scheme))
         throw new Error(`The scheme "${scheme}" can not be registered. Please use a non-reserved scheme.`);
@@ -111,6 +116,12 @@ try
             if (!serviceInfo)
             {
                 console.error(`Invalid Service. Service '${this.serviceName}' does not have an electron implementation.`);
+                /**
+                 * @param {string} action
+                 * @param {Array<any>} args
+                 * @param {CordovaElectronCallbackContext} callbackContext
+                 * @private
+                 */
                 this._exec = (action, args, callbackContext) =>
                 {
                     const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' isn't available.`;
@@ -132,6 +143,12 @@ try
                 const _impl = module;
                 this._impl = Promise.resolve(_impl);
 
+                /**
+                 * @param {string} action
+                 * @param {Array<any>} args
+                 * @param {CordovaElectronCallbackContext} callbackContext
+                 * @private
+                 */
                 this._exec = (action, args, callbackContext) =>
                 {
                     // console.log(this.module + '.' + action + '(' + (args || []).join(',') + ') ...');
@@ -184,6 +201,12 @@ try
                         } catch (error)
                         {
                             console.error("cannot init module " + this.module + " for service " + serviceName, error);
+                            /**
+                             * @param {string} action
+                             * @param {Array<any>} args
+                             * @param {CordovaElectronCallbackContext} callbackContext
+                             * @private
+                             */
                             this._exec = (action, args, callbackContext) =>
                             {
                                 const message = `Cannot execute action '${this.serviceName}.${action} 'as service '${this.serviceName}' wasn't successfully initialized.`;
@@ -201,6 +224,12 @@ try
                     return module;
                 })();
 
+                /**
+                 * @param {string} action
+                 * @param {Array<any>} args
+                 * @param {CordovaElectronCallbackContext} callbackContext
+                 * @private
+                 */
                 this._exec = (action, args, callbackContext) =>
                 {
                     _impl
@@ -242,15 +271,15 @@ try
 
         /**
          * @param {ConfigureResult} result
-         * @void
+         * @return {Promise<void>}
          */
-        configure(result)
+        async configure(result)
         {
             try
             {
                 const module = require(this.module);
                 if (module.configure)
-                    module.configure(new CordovaElectronPluginConfigContext(
+                    await module.configure(new CordovaElectronPluginConfigContext(
                         installed_plugins[this.pluginId],
                         scheme,
                         hostname,
@@ -342,12 +371,17 @@ try
     {
         // Create the browser window.
         let appIcon;
-        if (fs.existsSync(path.join(__dirname, 'img/app.png')))
+        if (fs.existsSync(path.join(__dirname, 'img/app.ico')))
+        {
+            appIcon = path.join(__dirname, 'img/app.ico');
+        }
+        else if (fs.existsSync(path.join(__dirname, 'img/app.png')))
         {
             appIcon = path.join(__dirname, 'img/app.png');
         }
         else if (fs.existsSync(path.join(__dirname, 'img/icon.png')))
         {
+            // obsolete ??
             appIcon = path.join(__dirname, 'img/icon.png');
         }
         else
@@ -391,8 +425,8 @@ try
     function loadStartPage()
     {
         // Load a local HTML file or a remote URL.
-        const cdvUrl = cdvElectronSettings.browserWindowInstance.loadURL.url;
-        const loadUrl = cdvUrl.includes('://') ? cdvUrl : `${basePath}/${cdvUrl}`;
+        const url = cdvElectronSettings.browserWindowInstance.loadURL.url;
+        const loadUrl = url.includes('://') ? url : `${basePath}/${url}`;
         const loadUrlOpts = Object.assign({}, cdvElectronSettings.browserWindowInstance.loadURL.options);
 
         mainWindow.loadURL(loadUrl, loadUrlOpts).catch((error) =>
@@ -417,9 +451,9 @@ try
 
     /**
      *
-     * @return {ConfigureResult}
+     * @return {Promise<ConfigureResult>}
      */
-    function configureServices()
+    async function configureServices()
     {
 
         /**
@@ -429,7 +463,7 @@ try
         if (cordova?.services)
         {
             for (const serviceName in cordova.services)
-                Service.getService(serviceName).configure(result);
+                await Service.getService(serviceName).configure(result);
         }
         return result;
     }
@@ -442,29 +476,18 @@ try
             await Service.getService(serviceName).initialized();
     }
 
-    /**
-     * @param {string} fileUrl
-     * @return {string|null}
-     */
-    function getFilePathForSchemeUrl(fileUrl)
-    {
-        if (!fileUrl.startsWith(basePath))
-            return null; // leaving the sandbox is forbidden
-        const osPath = path.normalize(url.fileURLToPath(fileUrl));
-        if (!osPath.startsWith(__dirname))
-            return null; // leaving the sandbox is forbidden
-        return osPath;
-    }
-
-
     function configureProtocol()
     {
+        /**
+         *
+         * @param {Electron.Protocol} protocol
+         */
         function configure(protocol)
         {
             // restrict file scheme handler to app path
-            if (!protocol.isProtocolIntercepted('file'))
+            if (!protocol.isProtocolIntercepted(FILE_SCHEME))
             {
-                protocol.interceptFileProtocol('file', (request, cb) =>
+                protocol.interceptFileProtocol(FILE_SCHEME, (request, cb) =>
                 {
                     // remove query and hash
                     const u = (request.url.split('?')[0]).split('#')[0];
@@ -512,8 +535,7 @@ try
         //configure(mainWindow.webContents.session.protocol);
         configure(protocol);
         for(const partition of configResult.allSchemesPartitions){
-            const p = session.fromPartition(partition).protocol;
-            configure(p);
+            configure(session.fromPartition(partition).protocol);
         }
 
     }
@@ -543,7 +565,7 @@ try
     /** startup **/
 
 
-    const configResult = configureServices();
+    const configResult = await configureServices();
 
     /**
      *
@@ -563,9 +585,12 @@ try
             }
         }
     ];
-    for (let scheme in configResult.schemes)
+    for (let schemeId in configResult.schemes)
     {
-        customSchemes.push(configResult.schemes[scheme]);
+        const schemeDef = configResult.schemes[schemeId];
+        if (reservedScheme.includes(schemeDef.scheme))
+            throw new Error(`The scheme "${schemeDef.scheme}" can not be registered. Please use a non-reserved scheme.`);
+        customSchemes.push(schemeDef);
     }
 
     // register at default session.protocol
