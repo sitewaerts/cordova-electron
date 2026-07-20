@@ -439,6 +439,28 @@ const FILE_SCHEME = 'file';
             await Service.getService(serviceName).initialized();
     }
 
+function configureProtocol () {
+    // `protocol.handle` was added in Electron 25.0 and replaced the deprecated
+    // `protocol.{register,intercept}{String,Buffer,Stream,Http,File}Protocol`.
+    if (protocol.handle) {
+        // If using Electron 25.0+
+        protocol.handle(scheme, request => {
+            const url = request.url.substr(basePath.length + 1);
+            const fileUrl = `file://${path.normalize(path.join(__dirname, url))}`;
+            return net.fetch(fileUrl);
+        });
+    } else if (protocol.registerFileProtocol) {
+        // If using Electron 24.x and older
+        protocol.registerFileProtocol(scheme, (request, cb) => {
+            const url = request.url.substr(basePath.length + 1);
+            cb({ path: path.normalize(path.join(__dirname, url)) }); // eslint-disable-line n/no-callback-literal
+        });
+        protocol.interceptFileProtocol('file', (_, cb) => { cb(null); });
+    } else {
+        // Cant configure if missing `protocol.handle` and `protocol.registerFileProtocol`...
+        console.info('Unable to configure the protocol.');
+    }
+}
     function configureProtocol() {
         /**
          *
