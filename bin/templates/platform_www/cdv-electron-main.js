@@ -33,6 +33,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const url = require('url');
 
+const windowStateKeeper = require('electron-window-state');
+
 const FILE_SCHEME = 'file';
 
 
@@ -357,7 +359,20 @@ const FILE_SCHEME = 'file';
 
         // TODO: set browserWindowOpts.backgroundColor from config.xml
 
+
+        const mainWindowState = windowStateKeeper({
+            defaultWidth: browserWindowOpts.width || 600,
+            defaultHeight: browserWindowOpts.height || 800,
+        });
+        browserWindowOpts.x = mainWindowState.x;
+        browserWindowOpts.y = mainWindowState.y;
+        browserWindowOpts.width = mainWindowState.width;
+        browserWindowOpts.height = mainWindowState.height;
+
+
         mainWindow = new BrowserWindow(browserWindowOpts);
+
+        mainWindowState.manage(mainWindow);
 
         if (cdvElectronSettings['overrideUserAgent'])
             mainWindow.webContents.setUserAgent(cdvElectronSettings['overrideUserAgent'])
