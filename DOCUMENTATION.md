@@ -973,7 +973,7 @@ Specify `--remote-debugging-port=8315` to debug the renderer process.
 #### NON APPX
 
 ```cmd
-test-app.exe --inspect-brk --remote-debugging-port=8315
+test-app.exe --inspect-brk=0.0.0.0:9229
 ```
 
 When packaged apps exe is started via cmd shell, it prints stdio to console. This is causing the console to hang after all windows have been closed.
@@ -981,15 +981,14 @@ To avoid this, specify `set ELECTRON_NO_ATTACH_CONSOLE=1`. Stdio isn't printed t
 
 #### APPX
 
+The ID of a locally installed APPX package is usually build as `{Name}_{PublisherId}!{Name}`.
+
 ```powershell
-Get-AppxPackage | Select-Object Name, PublisherId | Select-String "cleverdox"
+$app = Get-AppxPackage | % { $_.Name + '_' + $_.PublisherId + '!' + $_.Name } | Select-String "cloud.staging"; start "shell:appsFolder\$app" "--inspect-brk=127.0.0.1:9229"
 ```
-
-Die App-ID ergibt sich aus `{Name}_{PublisherId}!{Name}`.
-
-```cmd
-start shell:appsFolder\de.cleverdox.cordova.test.app_8n4mck96dff7e!de.cleverdox.cordova.test.app  --inspect-brk --remote-debugging-port=8315
-```
+- Die App startet den Main Prozess, bleibt aber unsichtbar, da die Ausführung in der ersten Zeile von `cdv-electron-main.js` auf den Debugger wartet.  
+- Über [Chrome Inspect](chrome://inspect/#devices) > _'Open dedicated DevTools for Node'_ zu Port `9229` verbinden.
+- Nach Klick auf `Continue` startet die App auch sichtbar.
 
 ### Debug Preload Scripts
 
@@ -998,9 +997,9 @@ Preload Scripts can be debugged in the Chrome Developer Tools attached to the Br
 For packaged Apps they aren't available in the sources via `CTRL+P`. 
 
 
-To get to the source, you have the following oportunities: 
-  - Set a breakpoint in a renderer script that accesses an API provided by the preload script via `contextBridge.exposeInMainWorld`. When that breakpoint is reached you may follow the stack into the preload script.
-  - Watch out for the message `executing cdv-electron-preload.js` in the console Panel of Chrome Developer Tools. Chrome places a link to the preload-script beside the log message.
+To get to the source, you have the following opportunities: 
+- Set a breakpoint in a renderer script that accesses an API provided by the preload script via `contextBridge.exposeInMainWorld`. When that breakpoint is reached you may follow the stack into the preload script.
+- Watch out for the message `executing cdv-electron-preload.js` in the console Panel of Chrome Developer Tools. Chrome places a link to the preload-script beside the log message.
 
 
 ## Plugins
@@ -1015,9 +1014,8 @@ In this case, it may affect the behavior of what is intended.
 Since Electron may support features that the browser does not, these plugins would possibly need to be updated for the `electron` platform.
 
 
-## Electron
+## Electron version
 
 If you're planing to switch to a newer version of electron:
-
 - update version number at package.json/dependencies/electron
 - check [breaking changes](https://www.electronjs.org/docs/latest/breaking-changes) and apply appropriate changes to this projects code
