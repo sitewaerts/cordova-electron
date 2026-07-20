@@ -125,6 +125,39 @@ function plainData(data){
     return JSON.parse(JSON.stringify(data, CENSOR()));
 }
 
+/**
+ * @param {any} value
+ * @return {any}
+ */
+function sanitizeData(value){
+    if (value === undefined || value === null)
+        return value;
+
+    if (typeof(value) == "string")
+        return value;
+
+    if (typeof(value) == "number")
+        return value;
+
+    if (typeof(value) == "boolean")
+        return value;
+
+    if (typeof(value) == "function")
+        return undefined;
+
+    // TODO: support Buffers
+
+    const result = {};
+    for(const key in value){
+        const nestedValue = sanitizeData(value[key]);
+        if(nestedValue)
+            result[key] = nestedValue;
+    }
+    if(Object.keys(result).length > 0)
+        return result;
+    return undefined;
+}
+
 class CordovaElectronCallbackContext
 {
     /**
@@ -167,7 +200,8 @@ class CordovaElectronCallbackContext
      */
     success (data) {
         try {
-            // assert invalid data
+            // assert invalid data (may be too expensive fpr production use)
+            // TODO: sanitize instead
             structuredClone(data);
 
             // do not plain data to let electron handle the serialization. electron supports special handling when passing e.g. buffers.
